@@ -1,0 +1,100 @@
+@page "/login"
+@using Blazored.LocalStorage
+@inject NavigationManager Navigation
+@inject IHttpClientFactory HttpClientFactory
+@inject ILocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@inject SweetAlertService Swal
+
+@code {
+   protected override async Task OnInitializedAsync()
+    {
+        // Kiểm tra nếu user đã đăng nhập (có token) thì redirect về dashboard
+        var token = await LocalStorage.GetItemAsync<string>("token");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Navigation.NavigateTo("/dashboard", true);
+        }
+    }
+}
+
+<div class="login-bg">
+    <div class="login-form-container">
+        <img src="LOGO-Logistics.png" alt="Logistics Logo" />
+        <h2>Login</h2>
+
+        <EditForm Model="@employee" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <input class="form-control" @bind="employee.UsernameOrEmail" placeholder="Username" />
+            </div>
+            <div class="mb-3">
+                <input type="password" class="form-control" @bind="employee.Password" placeholder="Password" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem;">Login</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    public UserLoginVM employee = new UserLoginVM();
+    private HttpClient _httpClient;
+
+ 
+    protected override void OnInitialized()
+    {
+        _httpClient = HttpClientFactory.CreateClient("LogisticApi");
+    }
+
+
+    private async Task HandleValidSubmit()
+    {
+
+        var response = await _httpClient.PostAsJsonAsync("user/login", employee);
+        if (response.IsSuccessStatusCode)
+        {
+            //Lấy kết quả trả về từ api
+            var result = await response.Content.ReadAsStringAsync();
+            
+            // Lưu token vào localStorage
+            await LocalStorage.SetItemAsync("token", result);
+
+
+            // Hiển thị thông báo thành công với SweetAlert2
+            await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Thành công!",
+                Text = "Đăng nhập thành công!",
+                Icon = SweetAlertIcon.Success,
+                Timer = 2000,
+                ShowConfirmButton = false,
+                TimerProgressBar = true
+            });
+            
+            // Notify authentication state change
+            if (AuthStateProvider is CustomAuthStateProvider customProvider)
+            {
+                customProvider.NotifyAuthStateChanged();
+            }
+        
+            // Navigate sau khi toast đã hiển thị
+            Navigation.NavigateTo("/dashboard");    
+        }
+        else
+        {
+            // Xem chi tiết lỗi
+            var errorContent = await response.Content.ReadAsStringAsync();
+            
+            // Hiển thị thông báo lỗi với SweetAlert2
+            await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Lỗi!",
+                Text = "Đăng nhập thất bại! Vui lòng kiểm tra lại username và password.",
+                Icon = SweetAlertIcon.Error,
+                ConfirmButtonText = "Thử lại"
+            });
+        }
+    }
+}

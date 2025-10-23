@@ -1,0 +1,52 @@
+﻿@page "/home"
+@layout HomeLayout
+@attribute [Authorize(Roles = "admin,user,staff")]
+
+<!-- Hero Section -->
+<section class="hero-section">
+  <img src="a1.jpg" 
+       alt="Shipping Port" 
+       class="hero-image">
+  <div class="hero-content">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <a href="#" class="service-box-link">
+            <div class="service-box">
+              <i class="fa-solid fa-ship"></i>
+              <h5>SHIPPING</h5>
+              <p>Dịch vụ vận chuyển đường biển chuyên nghiệp</p>
+            </div>
+          </a>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <a href="#" class="service-box-link">
+            <div class="service-box">
+              <i class="fa-solid fa-box"></i>
+              <h5>LOGISTICS</h5>
+              <p>Giải pháp logistics toàn diện và hiệu quả</p>
+            </div>
+          </a>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <a href="#" class="service-box-link">
+            <div class="service-box">
+              <i class="fa-solid fa-truck"></i>
+              <h5>HIGH QUALITY</h5>
+              <p>Chất lượng dịch vụ hàng đầu, uy tín</p>
+            </div>
+          </a>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <a href="#" class="service-box-link">
+            <div class="service-box">
+              <i class="fa-solid fa-plane"></i>
+              <h5>AIR CHARTERS</h5>
+              <p>Vận chuyển hàng không nhanh chóng</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

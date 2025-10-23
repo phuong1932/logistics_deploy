@@ -1,0 +1,87 @@
+@page "/dashboard"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin,user,staff")]
+@inject IHttpClientFactory HttpClientFactory
+@using LogisticsWebApp.DTO
+
+<div class="dashboard-page">
+    <div class="page-header">
+        <h2>📊 Dashboard - Tổng quan hệ thống</h2>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #4CAF50;">
+                📦
+            </div>
+            <div class="stat-info">
+                <h3>@dashboardResult.CargoCount</h3>
+                <p>Đơn hàng tháng này</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #2196F3;">
+                💰
+            </div>
+            <div class="stat-info">
+                <h3>@dashboardResult.TotalRevenueFormatted</h3>
+                <p>Doanh thu tháng</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #FF9800;">
+                📊
+            </div>
+            <div class="stat-info">
+                <h3>@dashboardResult.AverageRevenueFormatted</h3>
+                <p>TB/đơn hàng</p>
+            </div>
+        </div>
+
+   
+    </div>
+
+
+</div>
+
+@code {
+    private DashboardVM dashboardResult = new DashboardVM();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMonthlyStatistics();
+    }
+
+    private async Task LoadMonthlyStatistics()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var response = await client.GetAsync("Cargo/monthlystatistics");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonContent = await response.Content.ReadAsStringAsync();
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    dashboardResult = JsonSerializer.Deserialize<DashboardVM>(jsonContent, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new DashboardVM();
+   
+            }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error hoặc hiển thị thông báo lỗi
+            Console.WriteLine($"Lỗi khi tải thống kê: {ex.Message}");
+        }
+        
+    }
+
+ 
+}
+ 

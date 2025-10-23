@@ -1,0 +1,357 @@
+@page "/cargo-detail/{Id:int}"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin,staff")]
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject IHttpClientFactory HttpClientFactory
+@using System.IO
+
+<script src="~/js/cargo-detail.js"></script>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header Section -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0">
+                            <i class="fas fa-box me-2"></i>
+                            Chi tiết đơn hàng
+                        </h4>
+                        <small class="text-muted">Mã đơn: @(cargo?.CargoCode ?? "Đang tải...")</small>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-secondary me-2" @onclick="GoBack">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Quay lại
+                        </button>
+                        <button class="btn btn-primary" @onclick="EditCargo" disabled="@(cargo == null)">
+                            <i class="fas fa-edit me-1"></i>
+                            Chỉnh sửa
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thông báo lỗi -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle"></i> @errorMessage
+                    <button type="button" class="btn-close" @onclick="ClearError"></button>
+                </div>
+            }
+
+            <!-- Thông báo thành công -->
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle"></i> @successMessage
+                    <button type="button" class="btn-close" @onclick="ClearSuccess"></button>
+                </div>
+            }
+
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Đang tải thông tin đơn hàng...</p>
+                </div>
+            }
+            else if (errorMessage != null)
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @errorMessage
+                </div>
+            }
+            else if (cargo != null)
+            {
+                <div class="row">
+                    <!-- Thông tin chung -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Thông tin chung
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Mã đơn hàng:</label>
+                                        <p class="text-primary fw-bold">@cargo.CargoCode</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Ngày tạo:</label>
+                                        <p>@(cargo.CreatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Người tạo:</label>
+                                        <p>@cargo.EmployeeCreate</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Loại dịch vụ:</label>
+                                        <p>@GetServiceTypeName(cargo.ServiceType)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thông tin khách hàng -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-user me-2"></i>
+                                    Thông tin khách hàng
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-12 mb-3">
+                                        <label class="form-label fw-bold">Tên công ty:</label>
+                                        <p>@cargo.CustomerCompanyName</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Người phụ trách:</label>
+                                        <p>@cargo.CustomerPersonInCharge</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Số lượng shipper:</label>
+                                        <p class="text-primary fw-bold">@cargo.QuantityOfShipper</p>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <label class="form-label fw-bold">Địa chỉ:</label>
+                                        <p>@(cargo.CustomerAddress ?? "Chưa cập nhật")</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thông tin tài chính -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-dollar-sign me-2"></i>
+                                    Thông tin tài chính
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Tổng tiền dự kiến:</label>
+                                        <p class="text-success fw-bold fs-5">@FormatCurrency(cargo.EstimatedTotalAmount)</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Tiền đặt cọc:</label>
+                                        <p class="text-info fw-bold">@FormatCurrency(cargo.AdvanceMoney)</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Phí vận chuyển:</label>
+                                        <p class="text-warning fw-bold">@FormatCurrency(cargo.ShippingFee)</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Còn lại:</label>
+                                        <p class="text-danger fw-bold">@FormatCurrency(GetRemainingAmount())</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ngày quan trọng -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-calendar me-2"></i>
+                                    Ngày quan trọng
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Ngày cấp phép:</label>
+                                        <p>@(cargo.LicenseDate?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Ngày trao đổi:</label>
+                                        <p>@(cargo.ExchangeDate?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</p>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Trạng thái:</strong> 
+                                            @GetStatusText()
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+             
+            }
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .form-label {
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .text-primary {
+        color: #0d6efd !important;
+    }
+
+    .text-success {
+        color: #198754 !important;
+    }
+
+    .text-info {
+        color: #0dcaf0 !important;
+    }
+
+    .text-warning {
+        color: #ffc107 !important;
+    }
+
+    .text-danger {
+        color: #dc3545 !important;
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    
+    private CargoModel? cargo;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    HttpClient? client;
+
+    protected override async Task OnInitializedAsync()
+    {
+        client = HttpClientFactory.CreateClient("LogisticApi");
+
+        await LoadCargoDetail();
+    }
+
+    private async Task LoadCargoDetail()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await client.GetAsync($"Cargo/getcargobyid/{Id}");
+            var content = await response.Content.ReadAsStringAsync();
+            var responseData = JsonSerializer.Deserialize<CargoApiResponse>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            // chỉ cần check có dữ liệu hay không
+            if (responseData?.Data != null)
+            {
+                cargo = responseData.Data;
+            }
+            else
+            {
+                errorMessage = "Không tìm thấy thông tin đơn hàng";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi tải thông tin đơn hàng: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetServiceTypeName(byte? serviceType)
+    {
+        return serviceType switch
+        {
+            1 => "Vận chuyển nhanh",
+            2 => "Vận chuyển tiêu chuẩn",
+            3 => "Vận chuyển hàng nặng",
+            4 => "Vận chuyển quốc tế",
+            _ => "Chưa xác định"
+        };
+    }
+
+    private string FormatCurrency(decimal? amount)
+    {
+        if (amount == null) return "0 VNĐ";
+        return $"{amount:N0} VNĐ";
+    }
+
+    private decimal GetRemainingAmount()
+    {
+        if (cargo?.EstimatedTotalAmount == null || cargo?.AdvanceMoney == null)
+            return 0;
+        return cargo.EstimatedTotalAmount.Value - cargo.AdvanceMoney.Value;
+    }
+
+    private string GetStatusText()
+    {
+        if (cargo?.LicenseDate == null)
+            return "Chưa cấp phép";
+        if (cargo?.ExchangeDate == null)
+            return "Đã cấp phép, chưa trao đổi";
+        return "Đã hoàn thành";
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/cargo-list");
+    }
+
+    private void EditCargo()
+    {
+        if (cargo != null)
+        {
+            Navigation.NavigateTo($"/edit-cargo/{cargo.Id}");
+        }
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
+        StateHasChanged();
+    }
+
+    private void ClearSuccess()
+    {
+        successMessage = null;
+        StateHasChanged();
+    }
+
+}

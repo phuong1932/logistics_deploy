@@ -1,0 +1,554 @@
+@page "/edit-cargo/{CargoId:int}"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin,staff")]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+@using System.Text
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using LogisticsWebApp.DTO
+
+<div class="container-fluid p-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">CHỈNH SỬA ĐƠN HÀNG</h4>
+        </div>
+
+        <div class="card-body">
+          
+
+            @if (isLoading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                    <p class="mt-2">Đang tải thông tin đơn hàng...</p>
+                </div>
+            }
+            else if (cargoModel != null)
+            {
+                <EditForm Model="@cargoModel" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <div class="row">
+                        <!-- Thông tin khách hàng -->
+                        <div class="col-md-12 mb-3">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-info text-white">
+                                            <h5 class="mb-0">Thông tin khách hàng</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">Tên công ty khách hàng <span
+                                                        class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <InputText @bind-Value="cargoModel.CustomerCompanyName"
+                                                        class="form-control" placeholder="Nhập tên công ty khách hàng..."
+                                                        @oninput="OnCustomerNameInput" />
+                                                    <button class="btn btn-outline-secondary" type="button"
+                                                        @onclick="ToggleCustomerDropdown">
+                                                        <i class="fas fa-search"></i>
+                                                    </button>
+                                                </div>
+                                                <ValidationMessage For="@(() => cargoModel.CustomerCompanyName)"
+                                                    class="text-danger" />
+
+                                                @if (showCustomerDropdown && filteredCustomers.Any())
+                                                {
+                                                    <div class="customer-dropdown">
+                                                        @foreach (var customer in filteredCustomers)
+                                                        {
+                                                            <div class="customer-item" @onclick="() => SelectCustomer(customer)">
+                                                                <strong>@customer.CustomerName</strong>
+                                                                <br />
+                                                                <small class="text-muted">
+                                                                    @customer.Phone - @customer.Address
+                                                                </small>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Người phụ trách công ty</label>
+                                                <InputText @bind-Value="selectedCustomerPersonInCharge" class="form-control"
+                                                    placeholder="Người phụ trách" readonly />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-secondary text-white">
+                                            <h5 class="mb-0">Thông tin người tạo</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">Nhân viên tạo</label>
+                                                <InputText @bind-Value="cargoModel.EmployeeCreate" class="form-control"
+                                                    readonly />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Thông tin đơn hàng -->
+                        <div class="col-md-12 mb-3">
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0">Thông tin đơn hàng</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Mã Cargo</label>
+                                                <InputText @bind-Value="cargoModel.CargoCode" class="form-control"
+                                                    placeholder="Mã cargo" readonly />
+                                                <small class="text-muted">Mã cargo không thể thay đổi</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Loại dịch vụ <span
+                                                        class="text-danger">*</span></label>
+                                                <InputSelect @bind-Value="cargoModel.ServiceType" class="form-select">
+                                                    <option value="">-- Chọn loại dịch vụ --</option>
+                                                    <option value="0">Xuất khẩu</option>
+                                                    <option value="1">Nhập khẩu</option>
+                                                    <option value="2">Nội địa</option>
+                                                </InputSelect>
+                                                <ValidationMessage For="@(() => cargoModel.ServiceType)"
+                                                    class="text-danger" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Ngày giao dịch</label>
+                                                <InputDate @bind-Value="cargoModel.ExchangeDate" class="form-control" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Ngày nhận chứng từ</label>
+                                                <InputDate @bind-Value="cargoModel.LicenseDate" class="form-control" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Nơi giao hàng</label>
+                                                <InputText @bind-Value="cargoModel.CustomerAddress" class="form-control"
+                                                    placeholder="Địa điểm giao hàng" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Số lượng shipper</label>
+                                                <InputNumber @bind-Value="cargoModel.QuantityOfShipper" class="form-control"
+                                                    min="0" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Thông tin tài chính -->
+                        <div class="col-md-12 mb-3">
+                            <div class="card">
+                                <div class="card-header bg-warning text-dark">
+                                    <h5 class="mb-0">Thông tin tài chính</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label">Tổng tiền ước tính (VNĐ)</label>
+                                                <InputNumber @bind-Value="cargoModel.EstimatedTotalAmount"
+                                                    class="form-control" placeholder="0" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label">Tiền ứng (VNĐ)</label>
+                                                <InputNumber @bind-Value="cargoModel.AdvanceMoney" class="form-control"
+                                                    placeholder="0" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label">Phí vận chuyển (VNĐ)</label>
+                                                <InputNumber @bind-Value="cargoModel.ShippingFee" class="form-control"
+                                                    placeholder="0" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            <!-- Thông báo lỗi -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle"></i> @errorMessage
+                    <button type="button" class="btn-close" @onclick="ClearError"></button>
+                </div>
+            }
+
+            <!-- Thông báo thành công -->
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle"></i> @successMessage
+                    <button type="button" class="btn-close" @onclick="ClearSuccess"></button>
+                </div>
+            }
+                    <!-- Nút action -->
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel" disabled="@isSubmitting">
+                            <i class="fas fa-times-circle"></i> Hủy
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Đang xử lý...</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-save"></i>
+                                <span> Lưu đơn hàng</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            }
+            else
+            {
+                <div class="alert alert-danger">
+                    <h5>Không tìm thấy đơn hàng</h5>
+                    <p>Đơn hàng với ID @CargoId không tồn tại hoặc bạn không có quyền truy cập.</p>
+                    <button class="btn btn-primary" @onclick="@(() => NavigationManager.NavigateTo("/cargo-list"))">
+                        Quay lại danh sách
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .input-group {
+        position: relative;
+    }
+</style>
+
+
+@code {
+    [Parameter]
+    public int CargoId { get; set; }
+
+    public CreateCargoModel? cargoModel;
+    private List<CustomerModel> filteredCustomers = new List<CustomerModel>();
+    private bool showCustomerDropdown = false;
+    private bool isSubmitting = false;
+    private bool isLoading = true;
+    private string selectedCustomerPersonInCharge = "";
+    private string? errorMessage;
+    private string? successMessage;
+    HttpClient? client;
+
+    protected override async Task OnInitializedAsync()
+    {
+        client = HttpClientFactory.CreateClient("LogisticApi");
+        await LoadCargoData();
+    }
+
+    private async Task LoadCargoData()
+    {
+        try
+        {
+            if (client == null)
+            {
+                cargoModel = null;
+                return;
+            }
+
+            var response = await client.GetAsync($"Cargo/getcargobyid/{CargoId}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                cargoModel = null;
+                errorMessage = $"Không thể tải thông tin đơn hàng. Mã lỗi: {response.StatusCode}";
+                StateHasChanged();
+                return;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+
+
+            // Parse JSON
+            try
+            {
+                var apiResponse = JsonSerializer.Deserialize<CargoApiResponse>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (apiResponse?.Success == true && apiResponse.Data != null)
+                {
+                    var result = apiResponse.Data;
+
+                    cargoModel = new CreateCargoModel
+                    {
+                        CargoCode = result.CargoCode,
+                        CustomerCompanyName = result.CustomerCompanyName ?? "",
+                        EmployeeCreate = result.EmployeeCreate ?? "",
+                        CustomerPersonInCharge = result.CustomerPersonInCharge ?? "",
+                        CustomerAddress = result.CustomerAddress,
+                        ServiceType = result.ServiceType?.ToString() ?? "",
+                        ExchangeDate = result.ExchangeDate,
+                        LicenseDate = result.LicenseDate,
+                        EstimatedTotalAmount = result.EstimatedTotalAmount,
+                        AdvanceMoney = result.AdvanceMoney,
+                        ShippingFee = result.ShippingFee,
+                        QuantityOfShipper = result.QuantityOfShipper
+                    };
+
+                    selectedCustomerPersonInCharge = result.CustomerPersonInCharge ?? "";
+                }
+                else
+                {
+                    cargoModel = null;
+                    errorMessage = apiResponse?.Message ?? "Không thể tải thông tin đơn hàng.";
+                    StateHasChanged();
+                }
+            }
+            catch (JsonException ex)
+            {
+                cargoModel = null;
+                errorMessage = $"Lỗi khi đọc dữ liệu: {ex.Message}";
+                StateHasChanged();
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            cargoModel = null;
+            errorMessage = $"Không thể kết nối đến server: {ex.Message}";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            cargoModel = null;
+            errorMessage = $"Có lỗi xảy ra: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnCustomerNameInput(ChangeEventArgs e)
+    {
+        var searchText = e.Value?.ToString() ?? "";
+
+        // Kiểm tra cargoModel có null không
+        if (cargoModel == null)
+        {
+            return;
+        }
+
+        cargoModel.CustomerCompanyName = searchText;
+
+        // Chỉ gọi API khi nhập ít nhất 3 ký tự
+        if (string.IsNullOrWhiteSpace(searchText) || searchText.Length < 2)
+        {
+            showCustomerDropdown = false;
+            filteredCustomers.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            if (client == null)
+            {
+                return;
+            }
+
+            var response = await client.GetAsync($"Customer/search?name={searchText}");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<CustomerSearchResponse>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (result?.Success == true && result.Data != null)
+                {
+                    filteredCustomers = result.Data;
+                    showCustomerDropdown = filteredCustomers.Any();
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Lỗi khi tìm kiếm khách hàng
+        }
+
+        StateHasChanged();
+    }
+
+    private void ToggleCustomerDropdown()
+    {
+        // Chỉ hiển thị dropdown khi đã có kết quả tìm kiếm
+        if (filteredCustomers.Any())
+        {
+            showCustomerDropdown = !showCustomerDropdown;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectCustomer(CustomerModel customer)
+    {
+        if (cargoModel == null)
+        {
+            return;
+        }
+
+        cargoModel.CustomerCompanyName = customer.CustomerName;
+        cargoModel.CustomerAddress = customer.Address;
+        selectedCustomerPersonInCharge = customer.PersonInCharge ?? "";
+        cargoModel.CustomerPersonInCharge = customer.PersonInCharge ?? "";
+
+        showCustomerDropdown = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (isSubmitting)
+        {
+            return;
+        }
+
+        try
+        {
+            isSubmitting = true;
+            errorMessage = null;
+            successMessage = null;
+            StateHasChanged();
+
+            if (cargoModel == null || client == null)
+            {
+                errorMessage = "Dữ liệu không hợp lệ. Vui lòng tải lại trang.";
+                StateHasChanged();
+                return;
+            }
+
+            // Parse serviceType an toàn
+            byte? serviceType = null;
+            if (!string.IsNullOrEmpty(cargoModel.ServiceType))
+            {
+                if (byte.TryParse(cargoModel.ServiceType, out byte parsedValue))
+                {
+                    serviceType = parsedValue;
+                }
+            }
+
+            var requestData = new
+            {
+                cargoCode = cargoModel.CargoCode,
+                customerCompanyName = cargoModel.CustomerCompanyName,
+                employeeCreate = cargoModel.EmployeeCreate,
+                customerPersonInCharge = cargoModel.CustomerPersonInCharge,
+                customerAddress = cargoModel.CustomerAddress,
+                serviceType = serviceType,
+                exchangeDate = cargoModel.ExchangeDate,
+                licenseDate = cargoModel.LicenseDate,
+                nameOfLocation = cargoModel.NameOfLocation,
+                estimatedTotalAmount = cargoModel.EstimatedTotalAmount,
+                advanceMoney = cargoModel.AdvanceMoney,
+                shippingFee = cargoModel.ShippingFee,
+                quantityOfShipper = cargoModel.QuantityOfShipper
+            };
+
+            var json = JsonSerializer.Serialize(requestData);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PutAsync($"Cargo/updatecargo/{CargoId}", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Cập nhật đơn hàng thành công! Đang chuyển hướng...";
+                StateHasChanged();
+
+
+
+                NavigationManager.NavigateTo("/cargo-list");
+
+
+            }
+            else
+            {
+                var errorResult = JsonSerializer.Deserialize<ApiErrorResponse>(responseContent, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                errorMessage = errorResult?.Message ?? "Không thể cập nhật đơn hàng. Vui lòng thử lại!";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Có lỗi xảy ra: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/cargo-list");
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
+        StateHasChanged();
+    }
+
+    private void ClearSuccess()
+    {
+        successMessage = null;
+        StateHasChanged();
+    }
+}

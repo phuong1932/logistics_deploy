@@ -1,0 +1,40 @@
+version: '3.8'
+name: my-logistics-app
+services:
+  # API Service
+  logistics-api:
+    build:
+      context: ./LogisticsAPI
+      dockerfile: logistic_web.api/Dockerfile
+    container_name: logistics-api
+    ports:
+      - "5001:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    networks:
+      - logistics-network
+    restart: unless-stopped
+
+  # Web Application
+  logistics-webapp:
+    build:
+      context: ./LogisticsWebApp
+      dockerfile: Dockerfile
+    container_name: logistics-webapp
+    ports:
+      - "5002:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ApiBaseUrl=http://logistics-api:80
+    depends_on:
+      - logistics-api
+    networks:
+      - logistics-network
+    restart: unless-stopped
+
+networks:
+  logistics-network:
+    driver: bridge
+

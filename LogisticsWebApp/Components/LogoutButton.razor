@@ -1,0 +1,22 @@
+@inject NavigationManager Navigation
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+
+<button class="btn btn-outline-danger" @onclick="Logout">
+    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+</button>
+
+@code {
+    private async Task Logout()
+    {
+        await LocalStorage.RemoveItemAsync("token");
+        
+        // Notify authentication state change
+        if (AuthStateProvider is CustomAuthStateProvider customProvider)
+        {
+            customProvider.NotifyAuthStateChanged();
+        }
+        
+        Navigation.NavigateTo("/login", true);
+    }
+}

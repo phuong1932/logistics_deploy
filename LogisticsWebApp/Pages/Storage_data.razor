@@ -1,0 +1,1061 @@
+@page "/Storage_data"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin,user,staff")]
+@inject IJSRuntime JSRuntime
+@using System.IO
+@using System.Linq
+
+
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-4 file-explorer">
+            <h3>My Files</h3>
+            
+            <!-- Hiển thị path hiện tại -->
+            <div style="margin-bottom: 10px;">
+                @if (currentPath.Count > 0)
+                {
+                    <small class="text-muted">Path: @string.Join(" / ", currentPath)</small>
+                }
+            </div>
+            
+            <!-- Các nút điều khiển -->
+            <div class="header-actions" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                @if (currentPath.Count > 0)
+                {
+                    <button class="btn btn-sm btn-secondary" @onclick="GoBack">← Back</button>
+                }
+                <button class="btn btn-sm btn-info" @onclick="RefreshCargoDirectories">🔄 Refresh All</button>
+                @* <button class="btn btn-sm btn-success" @onclick="CreateNewFolder">📁 New Folder</button>
+                <button class="btn btn-sm btn-primary" @onclick="CreateNewFile">📄 New File</button> *@
+            </div>
+
+            <div class="section mt-4">
+                <h4>Folders</h4>
+
+                <div class="grid">
+                    @foreach (var folder in Folders)
+                    {
+                        <div class="folder-card @(selectedFolder == folder.Name ? "selected" : "")" 
+                             style="user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;"
+                             @onclick="() => HandleItemClick(folder)"
+                             @ondblclick="() => HandleItemDoubleClick(folder)">
+                            <div class="folder-icon">
+                                @if (folder.Type == "Folder")
+                                {
+                                    <span>📁</span>
+                                }
+                                else
+                                {
+                                    <span>📄</span>
+                                }
+                            </div>
+                            <div class="folder-name">@folder.Name</div>
+                        </div>
+                    }
+                </div>
+
+            </div>
+
+            <div class="section mt-5">
+                <h4>Files</h4>
+                <div class="grid">
+                    @foreach (var file in Files)
+                    {
+                        <div class="file-card">
+                            <div class="file-icon">📄</div>
+                            <div class="file-name">@file.Name</div>
+
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="footer">
+                <span>File Browser 2.21</span>
+                <div class="footer-help">
+                    <span>Help</span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="col-8">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Tên file</th>
+                            <th scope="col">Ngày tạo</th>
+                            <th scope="col">Người tạo</th>
+                            <th scope="col">Kích thước</th>
+                            <th scope="col">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (selectedFolderFiles != null && selectedFolderFiles.Any())
+                    {
+                        @for (int i = 0; i < selectedFolderFiles.Count; i++)
+                        {
+                            var file = selectedFolderFiles[i];
+                            <tr>
+                                <th scope="row">@(i + 1)</th>
+                                <td>
+                                    @if (file.Type == "Folder")
+                                    {
+                                        <span>📁</span> @file.Name
+                                    }
+                                    else
+                                    {
+                                        <span>📄</span> @file.Name
+                                    }
+                                </td>
+                                <td>@GetTimeAgo(file.LastModified)</td>
+                                <td>@file.Creator</td>
+                                <td>@(file.Size ?? "-")</td>
+                                <td>
+                                    @if (file.Type == "Folder")
+                                    {
+                                        <button class="btn btn-sm btn-info" @onclick="() => OpenSubFolder(file.Name)">Open</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-primary" @onclick="() => DownloadFile(file)">Download</button>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteFile(file)">Delete</button>
+                                        <button class="btn btn-sm btn-success" @onclick="() => ShowFileData(file)">Show data</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center">Chọn một thư mục để xem các file bên trong</td>
+                        </tr>
+                    }
+                </tbody>
+            
+            
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@* Modal hiển thị JSON data *@
+@if (showModal)
+{
+    <div class="modal-backdrop" @onclick="CloseModal"></div>
+    <div class="modal-dialog-custom">
+        <div class="modal-content-custom">
+            <div class="modal-header-custom">
+                <h5>📄 @selectedFileName</h5>
+                <button class="btn-close-custom" @onclick="CloseModal">✕</button>
+            </div>
+            <div class="modal-body-custom">
+                @if (cargoData != null)
+                {
+                    <div class="cargo-info">
+                        <!-- Metadata Section -->
+                        <div class="info-section">
+                            <h6 class="section-title">📋 Thông tin chung</h6>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Mã đơn hàng:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "cargoCode")</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Ngày tạo:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "dates", "createdAt")</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Người tạo:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "employeeCreate")</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer Info -->
+                        <div class="info-section">
+                            <h6 class="section-title">👤 Thông tin khách hàng</h6>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Tên khách hàng:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "customerCompanyName")</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Người phụ trách:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "customerPersonInCharge")</span>
+                                </div>
+                                <div class="info-item full-width">
+                                    <span class="info-label">Địa chỉ:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "customerAddress")</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Service Info -->
+                        <div class="info-section">
+                            <h6 class="section-title">🚚 Thông tin dịch vụ</h6>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Loại dịch vụ:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "serviceType", "name") (@GetJsonValue(cargoData, "cargoInfo", "serviceType", "code"))</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Số lượng shipper:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "logistics", "quantityOfShipper")</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Financial Info -->
+                        <div class="info-section">
+                            <h6 class="section-title">💰 Thông tin tài chính</h6>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Tổng tiền dự kiến:</span>
+                                    <span class="info-value highlight">@GetJsonValue(cargoData, "cargoInfo", "financial", "estimatedTotalAmountFormatted")</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Tiền đặt cọc:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "financial", "advanceMoneyFormatted")</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Phí vận chuyển:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "financial", "shippingFeeFormatted")</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dates -->
+                        <div class="info-section">
+                            <h6 class="section-title">📅 Ngày quan trọng</h6>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Ngày cấp phép:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "dates", "licenseDate")</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Ngày trao đổi:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "dates", "exchangeDate")</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(fileJsonContent))
+                {
+                    <p class="text-center text-danger">@fileJsonContent</p>
+                }
+                else
+                {
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Đang tải dữ liệu...</p>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer-custom">
+                <button class="btn btn-secondary" @onclick="CloseModal">Đóng</button>
+                <button class="btn btn-primary" @onclick="DownloadCurrentFile">Download</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+    }
+
+    .modal-dialog-custom {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1050;
+        width: 90%;
+        max-width: 800px;
+    }
+
+    .modal-content-custom {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        animation: slideDown 0.3s ease-out;
+    }
+
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header-custom {
+        padding: 20px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header-custom h5 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .btn-close-custom {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+        transition: color 0.2s;
+    }
+
+    .btn-close-custom:hover {
+        color: #000;
+    }
+
+    .modal-body-custom {
+        padding: 20px;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .modal-footer-custom {
+        padding: 15px 20px;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    /* Cargo Info Styles */
+    .cargo-info {
+        padding: 10px;
+    }
+
+    .info-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 4px solid #007bff;
+    }
+
+    .section-title {
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: #333;
+        font-size: 1rem;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 12px;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .info-item.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .info-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .info-value {
+        font-size: 0.95rem;
+        color: #212529;
+        font-weight: 400;
+        word-break: break-word;
+    }
+
+    .info-value.highlight {
+        color: #28a745;
+        font-weight: 600;
+        font-size: 1.05rem;
+    }
+
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+</style>
+
+@* code ket qua click *@
+
+@code
+{
+    private string? selectedFolder = null;
+    private List<FileItem>? selectedFolderFiles = null;
+    private bool isDoubleClicking = false;
+    
+    // Modal state
+    private bool showModal = false;
+    private string selectedFileName = "";
+    private string fileJsonContent = "";
+    private FileItem? currentFileForDownload = null;
+    private System.Text.Json.JsonElement? cargoData = null;
+
+
+
+    private void CreateNewFolder()
+    {
+        // TODO: Implement create new folder logic
+        Console.WriteLine("Create new folder clicked");
+    }
+
+    private void CreateNewFile()
+    {
+        // TODO: Implement create new file logic
+        Console.WriteLine("Create new file clicked");
+    }
+
+    private void HandleItemClick(FileItem item)
+    {
+        // Chỉ xử lý nếu là folder
+        if (item.Type == "Folder")
+        {
+            SelectFolder(item.Name);
+        }
+        else
+        {
+            // Nếu là file, hiển thị data
+            ShowFileData(item);
+        }
+    }
+
+    private void HandleItemDoubleClick(FileItem item)
+    {
+        // Chỉ xử lý nếu là folder
+        if (item.Type == "Folder")
+        {
+            DoubleClickFolder(item.Name);
+        }
+        else
+        {
+            // Nếu là file, download hoặc mở
+            DownloadFile(item);
+        }
+    }
+
+    private void SelectFolder(string folderName)
+    {
+        // Nếu đang double click, bỏ qua single click event
+        if (isDoubleClicking)
+        {
+            return;
+        }
+        
+        selectedFolder = folderName;
+        
+        // Kiểm tra xem folder này có trong folderContents không (là root folder)
+        if (folderContents.ContainsKey(folderName))
+        {
+            // Root folder - reset path
+            currentPath.Clear();
+            currentPath.Add(folderName);
+            
+            // Chỉ lấy các folder, không lấy file
+            selectedFolderFiles = folderContents[folderName]
+                .Where(item => item.Type == "Folder")
+                .ToList();
+            
+            Console.WriteLine($"Single click ROOT folder: {folderName}, showing {selectedFolderFiles.Count} folders only");
+        }
+        else
+        {
+            // Sub folder - thêm vào path (không reset)
+            if (!currentPath.Contains(folderName))
+            {
+                currentPath.Add(folderName);
+            }
+            
+            // Load từ file system
+            LoadFolderContent(folderName);
+            
+            Console.WriteLine($"Single click SUB folder: {folderName}, path: {string.Join(" -> ", currentPath)}");
+        }
+        
+        StateHasChanged();
+    }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.Now - dateTime;
+        
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes} phút trước";
+        else if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours} giờ trước";
+        else if (timeSpan.TotalDays < 30)
+            return $"{(int)timeSpan.TotalDays} ngày trước";
+        else if (timeSpan.TotalDays < 365)
+            return $"{(int)(timeSpan.TotalDays / 30)} tháng trước";
+        else
+            return $"{(int)(timeSpan.TotalDays / 365)} năm trước";
+    }
+
+    private void DownloadFile(FileItem file)
+    {
+        // Implement download logic
+        Console.WriteLine($"Downloading file: {file.Name}");
+    }
+
+    private List<FileItem> Folders = new List<FileItem>();
+    private List<FileItem> Files = new List<FileItem>();
+    private Dictionary<string, List<FileItem>> folderContents = new Dictionary<string, List<FileItem>>();
+    private List<string> currentPath = new List<string>();
+
+    protected override void OnInitialized()
+    {
+        LoadAllCargoDirectories();
+    }
+
+    private void LoadAllCargoDirectories()
+    {
+        string cargoPath = Path.Combine("wwwroot", "cargo");
+        
+        if (Directory.Exists(cargoPath))
+        {
+            // Lấy tất cả thư mục con trong cargo
+            var directories = Directory.GetDirectories(cargoPath);
+            
+            Folders.Clear();
+            folderContents.Clear();
+            
+            // Thêm tất cả thư mục vào danh sách
+            foreach (var dirPath in directories)
+            {
+                var dirInfo = new DirectoryInfo(dirPath);
+                string folderName = dirInfo.Name;
+                string displayName = GetDisplayName(folderName);
+                
+                // Thêm thư mục chính
+                Folders.Add(new FileItem 
+                { 
+                    Name = displayName, 
+                    Type = "Folder", 
+                    LastModified = dirInfo.LastWriteTime 
+                });
+                
+                // Lấy tất cả thư mục con trong thư mục này
+                var subDirectories = Directory.GetDirectories(dirPath);
+                var allFiles = new List<FileItem>();
+                
+                // Thêm thư mục con vào danh sách
+                foreach (var subDirPath in subDirectories)
+                {
+                    var subDirInfo = new DirectoryInfo(subDirPath);
+                    allFiles.Add(new FileItem
+                    {
+                        Name = subDirInfo.Name,
+                        Type = "Folder",
+                        LastModified = subDirInfo.LastWriteTime,
+                        Creator = "System"
+                    });
+                }
+                
+                // Lấy tất cả file JSON trong thư mục này (bao gồm cả thư mục con)
+                var jsonFiles = Directory.GetFiles(dirPath, "*.json", SearchOption.AllDirectories);
+                
+                foreach (var filePath in jsonFiles)
+                {
+                    var fileInfo = new FileInfo(filePath);
+                    allFiles.Add(new FileItem
+                    {
+                        Name = Path.GetFileName(filePath),
+                        Type = "File",
+                        LastModified = fileInfo.LastWriteTime,
+                        Size = FormatFileSize(fileInfo.Length),
+                        Creator = "System"
+                    });
+                }
+                
+                folderContents[displayName] = allFiles;
+            }
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024:F1} KB";
+        return $"{bytes / (1024 * 1024):F1} MB";
+    }
+
+    private string GetDisplayName(string folderName)
+    {
+        return folderName switch
+        {
+            "cargo_list" => "Lịch sử đơn hàng",
+            "cargo_history" => "Lịch sử vận chuyển",
+            "cargo_archive" => "Kho lưu trữ",
+            "cargo_backup" => "Sao lưu dữ liệu",
+            _ => folderName // Giữ nguyên tên nếu không có mapping
+        };
+    }
+
+    private string GetOriginalName(string displayName)
+    {
+        return displayName switch
+        {
+            "Lịch sử đơn hàng" => "cargo_list",
+            "Lịch sử vận chuyển" => "cargo_history",
+            "Kho lưu trữ" => "cargo_archive",
+            "Sao lưu dữ liệu" => "cargo_backup",
+            _ => displayName // Giữ nguyên tên nếu không có mapping
+        };
+    }
+
+    private void RefreshCargoDirectories()
+    {
+        LoadAllCargoDirectories();
+        StateHasChanged();
+    }
+
+    private async void DoubleClickFolder(string folderName)
+    {
+        // Set flag để ngăn SelectFolder chạy
+        isDoubleClicking = true;
+        
+        // Nếu đã có trong path, không thêm nữa (tránh duplicate)
+        if (!currentPath.Contains(folderName))
+        {
+            currentPath.Add(folderName);
+        }
+        
+        // Load nội dung thư mục cho cả bên trái và bên phải
+        LoadFolderContentForBothSides(folderName);
+        
+        
+        StateHasChanged();
+        
+        // Reset flag sau một khoảng thời gian ngắn
+        await Task.Delay(300);
+        isDoubleClicking = false;
+    }
+
+    private void GoBack()
+    {
+        if (currentPath.Count > 1)
+        {
+            currentPath.RemoveAt(currentPath.Count - 1);
+            string parentFolder = currentPath.Last();
+            
+            // Load lại nội dung thư mục cha
+            LoadFolderContentForBothSides(parentFolder);
+            
+            StateHasChanged();
+        }
+        else if (currentPath.Count == 1)
+        {
+            // Quay về root - xóa path và load lại tất cả
+            currentPath.Clear();
+            LoadAllCargoDirectories();
+            selectedFolderFiles = null; // Xóa nội dung bên phải
+            
+            StateHasChanged();
+        }
+    }
+
+    private string GetCurrentPathDisplay()
+    {
+        if (currentPath.Count == 0) return "Root";
+        return currentPath.Last();
+    }
+
+    private void LoadFolderContentForBothSides(string folderName)
+    {
+        if (currentPath.Count == 1)
+        {
+            // Thư mục gốc - load từ folderContents
+            if (folderContents.ContainsKey(folderName))
+            {
+                // Cập nhật bên trái với thư mục con
+                UpdateLeftSideFolders(folderName);
+                
+                // Debug: kiểm tra nội dung folderContents
+                Console.WriteLine($"folderContents[{folderName}] has {folderContents[folderName].Count} items:");
+                foreach (var item in folderContents[folderName])
+                {
+                    Console.WriteLine($"  - {item.Name} (Type: {item.Type})");
+                }
+                
+                Console.WriteLine($"Folders after UpdateLeftSideFolders has {Folders.Count} items:");
+                foreach (var folder in Folders)
+                {
+                    Console.WriteLine($"  - {folder.Name} (Type: {folder.Type})");
+                }
+                
+                // Cập nhật bên phải với nội dung giống bên trái
+                selectedFolderFiles = new List<FileItem>(Folders);
+                
+                Console.WriteLine($"selectedFolderFiles has {selectedFolderFiles.Count} items:");
+            }
+        }
+        else
+        {
+            // Thư mục con - load từ file system
+            string fullPath = Path.Combine("wwwroot", "cargo", GetOriginalName(currentPath[0]));
+            for (int i = 1; i < currentPath.Count; i++)
+            {
+                fullPath = Path.Combine(fullPath, currentPath[i]);
+            }
+            
+            // Debug: kiểm tra đường dẫn
+            Console.WriteLine($"Loading from path: {Path.GetFullPath(fullPath)}");
+            Console.WriteLine($"Directory exists: {Directory.Exists(fullPath)}");
+            
+            if (Directory.Exists(fullPath))
+            {
+                var allItems = new List<FileItem>();
+                var newFolders = new List<FileItem>();
+                
+                // Lấy thư mục con
+                var subDirs = Directory.GetDirectories(fullPath);
+                Console.WriteLine($"Found {subDirs.Length} subdirectories");
+                
+                foreach (var dir in subDirs)
+                {
+                    var dirInfo = new DirectoryInfo(dir);
+                    var folderItem = new FileItem
+                    {
+                        Name = dirInfo.Name,
+                        Type = "Folder",
+                        LastModified = dirInfo.LastWriteTime,
+                        Creator = "System"
+                    };
+                    
+                    allItems.Add(folderItem);
+                    newFolders.Add(folderItem);
+                }
+                
+                // Lấy file JSON
+                var jsonFiles = Directory.GetFiles(fullPath, "*.json");
+                Console.WriteLine($"Found {jsonFiles.Length} JSON files");
+                
+                foreach (var file in jsonFiles)
+                {
+                    var fileInfo = new FileInfo(file);
+                    var fileItem = new FileItem
+                    {
+                        Name = Path.GetFileName(file),
+                        Type = "File",
+                        LastModified = fileInfo.LastWriteTime,
+                        Size = FormatFileSize(fileInfo.Length),
+                        Creator = "System"
+                    };
+                    
+                    allItems.Add(fileItem);
+                }
+                
+                // Nếu không có subfolder, hiện file ở bên trái
+                if (subDirs.Length == 0 && jsonFiles.Length > 0)
+                {
+                    Console.WriteLine("No subfolders found, showing files on left side");
+                    Folders.Clear();
+                    Folders.AddRange(allItems); // Hiện file ở bên trái
+                }
+                else
+                {
+                    // Có subfolder, chỉ hiện subfolder ở bên trái
+                    Console.WriteLine("Subfolders found, showing only folders on left side");
+                    Folders.Clear();
+                    Folders.AddRange(newFolders);
+                }
+                
+                // Cập nhật bên phải với nội dung giống bên trái
+                selectedFolderFiles = new List<FileItem>(Folders);
+            }
+        }
+    }
+
+    private void UpdateLeftSideFolders(string folderName)
+    {
+        // Lấy thư mục con từ folderContents
+        if (folderContents.ContainsKey(folderName))
+        {
+            // Lấy chỉ thư mục con (không lấy file)
+            var subFolders = folderContents[folderName]
+                .Where(item => item.Type == "Folder")
+                .ToList();
+            
+            // Cập nhật Folders để hiển thị bên trái
+            Folders.Clear();
+            Folders.AddRange(subFolders);
+            
+            foreach (var folder in subFolders)
+            {
+                Console.WriteLine($"  - {folder.Name} (Type: {folder.Type})");
+            }
+        }
+    }
+
+    private void LoadFolderContent(string folderName)
+    {
+        if (currentPath.Count == 1)
+        {
+            // Thư mục gốc - load từ folderContents
+            if (folderContents.ContainsKey(folderName))
+            {
+                selectedFolderFiles = folderContents[folderName];
+            }
+        }
+        else
+        {
+            // Thư mục con - load từ file system
+            string fullPath = Path.Combine("wwwroot", "cargo", GetOriginalName(currentPath[0]));
+            for (int i = 1; i < currentPath.Count; i++)
+            {
+                fullPath = Path.Combine(fullPath, currentPath[i]);
+            }
+            
+            if (Directory.Exists(fullPath))
+            {
+                var allItems = new List<FileItem>();
+                
+                // Lấy thư mục con
+                var subDirs = Directory.GetDirectories(fullPath);
+                foreach (var dir in subDirs)
+                {
+                    var dirInfo = new DirectoryInfo(dir);
+                    allItems.Add(new FileItem
+                    {
+                        Name = dirInfo.Name,
+                        Type = "Folder",
+                        LastModified = dirInfo.LastWriteTime,
+                        Creator = "System"
+                    });
+                }
+                
+                // Lấy file JSON
+                var jsonFiles = Directory.GetFiles(fullPath, "*.json");
+                foreach (var file in jsonFiles)
+                {
+                    var fileInfo = new FileInfo(file);
+                    allItems.Add(new FileItem
+                    {
+                        Name = Path.GetFileName(file),
+                        Type = "File",
+                        LastModified = fileInfo.LastWriteTime,
+                        Size = FormatFileSize(fileInfo.Length),
+                        Creator = "System"
+                    });
+                }
+                
+                selectedFolderFiles = allItems;
+            }
+        }
+    }
+
+    private void OpenSubFolder(string subFolderName)
+    {
+        // Tìm thư mục con trong thư mục hiện tại
+        string currentPath = Path.Combine("wwwroot", "cargo", GetOriginalName(selectedFolder), subFolderName);
+        
+        if (Directory.Exists(currentPath))
+        {
+            var jsonFiles = Directory.GetFiles(currentPath, "*.json");
+            var subFolderFiles = new List<FileItem>();
+            
+            foreach (var filePath in jsonFiles)
+            {
+                var fileInfo = new FileInfo(filePath);
+                subFolderFiles.Add(new FileItem
+                {
+                    Name = Path.GetFileName(filePath),
+                    Type = "File",
+                    LastModified = fileInfo.LastWriteTime,
+                    Size = FormatFileSize(fileInfo.Length),
+                    Creator = "System"
+                });
+            }
+            
+            selectedFolderFiles = subFolderFiles;
+            StateHasChanged();
+        }
+    }
+
+    private void DeleteFile(FileItem file)
+    {
+        // Implement delete logic
+        if (selectedFolderFiles != null)
+        {
+            selectedFolderFiles.Remove(file);
+            StateHasChanged();
+        }
+    }
+
+    private async void ShowFileData(FileItem file)
+    {
+        // Hiển thị thông tin file (không thêm vào path)
+        Console.WriteLine($"Showing data for file: {file.Name}");
+        Console.WriteLine($"Current path (unchanged): {string.Join(" / ", currentPath)}");
+        
+        try
+        {
+            // Set file info
+            selectedFileName = file.Name;
+            currentFileForDownload = file;
+            showModal = true;
+            fileJsonContent = ""; // Reset content
+            cargoData = null; // Reset cargo data
+            StateHasChanged();
+            
+            // Xây dựng đường dẫn đầy đủ đến file
+            string fullPath = Path.Combine("wwwroot", "cargo");
+            
+            Console.WriteLine($"=== DEBUG ShowFileData ===");
+            Console.WriteLine($"currentPath count: {currentPath.Count}");
+            Console.WriteLine($"currentPath: {string.Join(" / ", currentPath)}");
+            
+            if (currentPath.Count > 0)
+            {
+                // Thêm các thư mục trong path
+                string originalName = GetOriginalName(currentPath[0]);
+                Console.WriteLine($"Original name: {originalName}");
+                fullPath = Path.Combine(fullPath, originalName);
+                
+                for (int i = 1; i < currentPath.Count; i++)
+                {
+                    Console.WriteLine($"Adding to path: {currentPath[i]}");
+                    fullPath = Path.Combine(fullPath, currentPath[i]);
+                }
+            }
+            
+            fullPath = Path.Combine(fullPath, file.Name);
+            
+            Console.WriteLine($"Final path: {Path.GetFullPath(fullPath)}");
+            Console.WriteLine($"File exists: {File.Exists(fullPath)}");
+            
+            // Nếu file không tồn tại, thử tìm trong tất cả thư mục con
+            if (!File.Exists(fullPath))
+            {
+                string searchPath = Path.Combine("wwwroot", "cargo");
+                var foundFiles = Directory.GetFiles(searchPath, file.Name, SearchOption.AllDirectories);
+                
+                if (foundFiles.Length > 0)
+                {
+                    fullPath = foundFiles[0];
+                    Console.WriteLine($"Found file at: {fullPath}");
+                }
+            }
+            
+            // Đọc nội dung file JSON
+            if (File.Exists(fullPath))
+            {
+                string jsonContent = await File.ReadAllTextAsync(fullPath);
+                
+                // Parse JSON thành object
+                try
+                {
+                    var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonContent);
+                    cargoData = jsonDoc.RootElement;
+                    
+                    Console.WriteLine("JSON parsed successfully");
+                }
+                catch (Exception jsonEx)
+                {
+                    Console.WriteLine($"JSON parse error: {jsonEx.Message}");
+                    fileJsonContent = $"❌ Lỗi parse JSON: {jsonEx.Message}";
+                }
+                
+                StateHasChanged();
+            }
+            else
+            {
+                fileJsonContent = $"❌ File không tồn tại: {Path.GetFullPath(fullPath)}";
+                Console.WriteLine($"File not found: {Path.GetFullPath(fullPath)}");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading file: {ex.Message}");
+            fileJsonContent = $"❌ Lỗi khi đọc file: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+    
+    private void CloseModal()
+    {
+        showModal = false;
+        fileJsonContent = "";
+        selectedFileName = "";
+        currentFileForDownload = null;
+        cargoData = null;
+        StateHasChanged();
+    }
+    
+    private void DownloadCurrentFile()
+    {
+        if (currentFileForDownload != null)
+        {
+            DownloadFile(currentFileForDownload);
+        }
+    }
+    
+    private string GetJsonValue(System.Text.Json.JsonElement? jsonElement, params string[] path)
+    {
+        try
+        {
+            if (jsonElement == null || !jsonElement.HasValue)
+                return "-";
+            
+            var current = jsonElement.Value;
+            
+            foreach (var key in path)
+            {
+                if (current.ValueKind == System.Text.Json.JsonValueKind.Object && current.TryGetProperty(key, out var property))
+                {
+                    current = property;
+                }
+                else
+                {
+                    return "-";
+                }
+            }
+            
+            return current.ValueKind switch
+            {
+                System.Text.Json.JsonValueKind.String => current.GetString() ?? "-",
+                System.Text.Json.JsonValueKind.Number => current.GetRawText(),
+                System.Text.Json.JsonValueKind.True => "Có",
+                System.Text.Json.JsonValueKind.False => "Không",
+                System.Text.Json.JsonValueKind.Null => "-",
+                _ => current.GetRawText()
+            };
+        }
+        catch
+        {
+            return "-";
+        }
+    }
+}

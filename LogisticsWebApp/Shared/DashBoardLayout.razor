@@ -1,0 +1,22 @@
+@inherits LayoutComponentBase
+
+<div class="dashboard-layout">
+    <!-- Header -->
+    <Header />
+    
+    <!-- Main Content Area -->
+    <div class="main-container">
+        <!-- Sidebar Menu -->
+        <aside class="sidebar">
+            <Menu />
+        </aside>
+        
+        <!-- Content Area -->
+        <main class="content-area">
+            @Body
+        </main>
+    </div>
+    
+    <!-- Footer -->
+    <Footer />
+</div>

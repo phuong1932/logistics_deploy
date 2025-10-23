@@ -1,0 +1,489 @@
+@page "/edit-user/{id:int}"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin")]
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime JSRuntime
+@inject ILocalStorageService LocalStorage
+@using System.Text.Json
+@using System.Text
+@using Microsoft.AspNetCore.Authorization
+@using LogisticsWebApp.DTO
+@using Blazored.LocalStorage
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid p-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-edit"></i> CHỈNH SỬA NGƯỜI DÙNG
+                    </h4>
+                    <button class="btn btn-light btn-sm" @onclick="GoBack">
+                        <i class="fas fa-arrow-left"></i> Quay lại
+                    </button>
+                </div>
+
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center p-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (userModel == null)
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> Không tìm thấy thông tin người dùng.
+                        </div>
+                    }
+                    else
+                    {
+                        <EditForm Model="@userModel" OnValidSubmit="HandleSubmit">
+                            <DataAnnotationsValidator />
+
+                            <div class="row">
+                                <!-- Thông tin cơ bản -->
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-primary text-white">
+                                            <h5 class="mb-0">Thông tin cơ bản</h5>
+                                        </div>
+                                        <div class="card-body">
+                                           
+
+                                            <!-- Username (readonly) -->
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">
+                                                    Tên đăng nhập
+                                                </label>
+                                                <input type="text" class="form-control" value="@userModel.Username" readonly  disabled/>
+                                                <small class="text-muted">Tên đăng nhập không thể thay đổi</small>
+                                            </div>
+
+                                            <!-- Email -->
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">
+                                                    Email <span class="text-danger">*</span>
+                                                </label>
+                                                <InputText @bind-Value="userModel.Email" 
+                                                           type="email"
+                                                           class="form-control" 
+                                                           placeholder="Nhập email" />
+                                                <ValidationMessage For="@(() => userModel.Email)" class="text-danger" />
+                                            </div>
+
+                                            <!-- Full Name -->
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">
+                                                    Họ và tên <span class="text-danger">*</span>
+                                                </label>
+                                                <InputText @bind-Value="userModel.FullName" 
+                                                           class="form-control" 
+                                                           placeholder="Nhập họ và tên" />
+                                                <ValidationMessage For="@(() => userModel.FullName)" class="text-danger" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Đổi mật khẩu -->
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-info text-white">
+                                            <h5 class="mb-0">Đổi mật khẩu (tùy chọn)</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="alert alert-info mb-3">
+                                                <i class="fas fa-info-circle"></i> 
+                                                Để trống nếu không muốn thay đổi mật khẩu
+                                            </div>
+
+                                            <!-- Password -->
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">Mật khẩu mới</label>
+                                                <div class="input-group">
+                                                    <InputText @bind-Value="userModel.Password" 
+                                                               type="@(showPassword ? "text" : "password")"
+                                                               class="form-control" 
+                                                               placeholder="Nhập mật khẩu mới" />
+                                                    <button class="btn btn-outline-secondary" 
+                                                            type="button" 
+                                                            @onclick="TogglePasswordVisibility">
+                                                        <i class="fas @(showPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                                    </button>
+                                                </div>
+                                                <ValidationMessage For="@(() => userModel.Password)" class="text-danger" />
+                                                <small class="text-muted">Tối thiểu 6 ký tự</small>
+                                            </div>
+
+                                            <!-- Confirm Password -->
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">Xác nhận mật khẩu mới</label>
+                                                <div class="input-group">
+                                                    <InputText @bind-Value="userModel.ConfirmPassword" 
+                                                               type="@(showConfirmPassword ? "text" : "password")"
+                                                               class="form-control" 
+                                                               placeholder="Nhập lại mật khẩu mới" />
+                                                    <button class="btn btn-outline-secondary" 
+                                                            type="button" 
+                                                            @onclick="ToggleConfirmPasswordVisibility">
+                                                        <i class="fas @(showConfirmPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                                    </button>
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(userModel.Password) && 
+                                                     !string.IsNullOrEmpty(userModel.ConfirmPassword) &&
+                                                     userModel.Password != userModel.ConfirmPassword)
+                                                {
+                                                    <small class="text-danger">Mật khẩu xác nhận không khớp</small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Quản lý vai trò -->
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-success text-white">
+                                            <h5 class="mb-0">Quản lý vai trò</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            @if (isLoadingRoles)
+                                            {
+                                                <div class="text-center p-3">
+                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                        <span class="visually-hidden">Đang tải roles...</span>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else if (availableRoles != null && availableRoles.Any())
+                                            {
+                                               
+
+                                                <!-- Select Role -->
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">
+                                                        Vai trò <span class="text-danger">*</span>
+                                                    </label>
+                                                    <select @bind="selectedRoleId" class="form-select form-select-lg">
+                                                        <option value="0">-- Chọn vai trò --</option>
+                                                        @foreach (var role in availableRoles)
+                                                        {
+                                                            <option value="@role.Id">
+                                                                @role.RoleName
+                                                                @(!string.IsNullOrEmpty(role.Description) ? $" - {role.Description}" : "")
+                                                            </option>
+                                                        }
+                                                    </select>
+                                                </div>
+
+                                            }
+                                            else
+                                            {
+                                                <div class="alert alert-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i> 
+                                                    Không có vai trò nào để chọn
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Thông báo lỗi -->
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <i class="fas fa-exclamation-circle"></i> @errorMessage
+                                    <button type="button" class="btn-close" @onclick="ClearError"></button>
+                                </div>
+                            }
+
+                            <!-- Thông báo thành công -->
+                            @if (!string.IsNullOrEmpty(successMessage))
+                            {
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <i class="fas fa-check-circle"></i> @successMessage
+                                    <button type="button" class="btn-close" @onclick="ClearSuccess"></button>
+                                </div>
+                            }
+
+                            <!-- Buttons -->
+                            <div class="d-flex justify-content-end gap-2 mt-4">
+                                <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                                    <i class="fas fa-times"></i> Hủy
+                                </button>
+                                <button type="submit" class="btn btn-warning" disabled="@isSubmitting">
+                                    @if (isSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Đang cập nhật...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-save"></i>
+                                        <span>Cập nhật</span>
+                                    }
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private UserUpdateModel? userModel;
+    private List<RoleModel> availableRoles = new List<RoleModel>();
+    private int selectedRoleId = 0;
+    private int originalRoleId = 0;
+    private bool isLoading = true;
+    private bool isLoadingRoles = true;
+    private bool isSubmitting = false;
+    private bool showPassword = false;
+    private bool showConfirmPassword = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        await LoadUserDetail();
+        await LoadAvailableRoles();
+    }
+
+    private async Task LoadUserDetail()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            var response = await client.GetAsync($"User/getuserbyid/{Id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var user = JsonSerializer.Deserialize<UserModel>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (user != null)
+                {
+                    userModel = new UserUpdateModel
+                    {
+                        Id = user.Id,
+                        Username = user.Username,
+                        Email = user.Email,
+                        FullName = user.FullName
+                    };
+                }
+            }
+            else
+            {
+                errorMessage = "Không thể tải thông tin người dùng";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi tải dữ liệu: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAvailableRoles()
+    {
+        try
+        {
+            isLoadingRoles = true;
+            StateHasChanged();
+
+            // Load all roles
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            var rolesResponse = await client.GetAsync("Role");
+            if (rolesResponse.IsSuccessStatusCode)
+            {
+                var rolesContent = await rolesResponse.Content.ReadAsStringAsync();
+                var roles = JsonSerializer.Deserialize<List<RoleModel>>(rolesContent, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (roles != null)
+                {
+                    availableRoles = roles;
+                }
+            }
+
+            // Load user's current role
+            var userResponse = await client.GetAsync($"User/getuserbyid/{Id}");
+            if (userResponse.IsSuccessStatusCode)
+            {
+                var userContent = await userResponse.Content.ReadAsStringAsync();
+                var user = JsonSerializer.Deserialize<UserModel>(userContent, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (user != null && user.Roles != null && user.Roles.Any())
+                {
+                    // Lấy role đầu tiên (giả sử mỗi user chỉ có 1 role chính)
+                    var userRoleName = user.Roles.First();
+                    var userRole = availableRoles.FirstOrDefault(r => r.RoleName.Equals(userRoleName, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (userRole != null)
+                    {
+                        selectedRoleId = userRole.Id;
+                        originalRoleId = userRole.Id;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi tải danh sách vai trò: {ex.Message}";
+        }
+        finally
+        {
+            isLoadingRoles = false;
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            // Validate password confirmation
+            if (!string.IsNullOrEmpty(userModel!.Password))
+            {
+                if (userModel.Password != userModel.ConfirmPassword)
+                {
+                    errorMessage = "Mật khẩu xác nhận không khớp";
+                    return;
+                }
+            }
+
+            isSubmitting = true;
+            errorMessage = null;
+            successMessage = null;
+            StateHasChanged();
+
+            // 1. Update user basic info
+            var updateRequest = new
+            {
+                fullName = userModel.FullName,
+                email = userModel.Email,
+                password = string.IsNullOrEmpty(userModel.Password) ? null : userModel.Password
+            };
+
+            var json = JsonSerializer.Serialize(updateRequest);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            var response = await client.PutAsync($"User/updateuser/{Id}", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Cập nhật thông tin thất bại: {errorContent}";
+                return;
+            }
+
+            // 2. Update role (nếu có thay đổi)
+            if (selectedRoleId != originalRoleId)
+            {
+                // Xóa role cũ
+                if (originalRoleId > 0)
+                {
+                    var removeRequest = new { userId = Id, roleId = originalRoleId };
+                    var removeJson = JsonSerializer.Serialize(removeRequest);
+                    var removeContent = new StringContent(removeJson, Encoding.UTF8, "application/json");
+                    var request = new HttpRequestMessage(HttpMethod.Delete, "User/remove-role")
+                    {
+                        Content = removeContent
+                    };
+                    await client.SendAsync(request);
+                }
+
+                // Gán role mới
+                if (selectedRoleId > 0)
+                {
+                    var assignRequest = new { userId = Id, roleId = selectedRoleId };
+                    var assignJson = JsonSerializer.Serialize(assignRequest);
+                    var assignContent = new StringContent(assignJson, Encoding.UTF8, "application/json");
+                    await client.PostAsync("User/assign-role", assignContent);
+                }
+            }
+
+            successMessage = "Cập nhật thành công! Đang chuyển hướng...";
+            StateHasChanged();
+
+            await Task.Delay(1500);
+            NavigationManager.NavigateTo("/user-list");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
+    private void ToggleConfirmPasswordVisibility()
+    {
+        showConfirmPassword = !showConfirmPassword;
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
+    }
+
+    private void ClearSuccess()
+    {
+        successMessage = null;
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/user-list");
+    }
+
+}
+

@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "fileType": "Cargo Information",
+    "version": "1.0",
+    "createdDate": "2025-10-16 13:31:32",
+    "description": "File này được tạo tự động khi thêm cargo mới"
+  },
+  "cargoInfo": {
+    "id": 1003,
+    "numOfCargo": "CG20251016133131",
+    "nameOfCustomer": "Công ty Cổ phần XYZ Logistics",
+    "nameOfBoss": "Lê Thị Hương",
+    "nameOfEmployeeCreate": "Phạm Văn Đức",
+    "address": "456 Đường Nguyễn Huệ, Quận 3, TP. Hồ Chí Minh",
+    "typeOfService": {
+      "code": 2,
+      "name": "CƯỚC QUỐC TẾ"
+    },
+    "dates": {
+      "dateOfLicense": "2025-10-16 13:31:31",
+      "dateOfExchange": "2024-01-25",
+      "createdAt": "2025-10-16 13:31:31"
+    },
+    "financial": {
+      "estimatedTotalAmount": 25000000,
+      "advanceMoney": 5000000,
+      "moneyOfShipping": 2500000,
+      "estimatedTotalAmountFormatted": "25,000,000 VND",
+      "advanceMoneyFormatted": "5,000,000 VND",
+      "moneyOfShippingFormatted": "2,500,000 VND"
+    },
+    "logistics": {
+      "numOfShipper": 3
+    }
+  }
+}

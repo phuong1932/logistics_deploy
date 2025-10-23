@@ -1,0 +1,59 @@
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject IJSRuntime JSRuntime
+
+<div class="user-info">
+    @if (!string.IsNullOrEmpty(userName))
+    {
+        <span class="text-success">
+            <i class="fas fa-user-circle"></i>
+            Xin chào, <strong>@userName</strong>
+        </span>
+    }
+    else
+    {
+        <span class="text-muted">
+            <i class="fas fa-user"></i>
+            Khách
+        </span>
+    }
+</div>
+
+@code {
+    private string userName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                // Giải mã JWT token để lấy tên user (đơn giản)
+                var payload = token.Split('.')[1];
+                // Thêm padding nếu cần
+                while (payload.Length % 4 != 0)
+                {
+                    payload += "=";
+                }
+                
+                var jsonBytes = Convert.FromBase64String(payload);
+                var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
+                
+                // Parse JSON để lấy tên user
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("unique_name", out var nameElement))
+                {
+                    userName = nameElement.GetString() ?? "User";
+                }
+                else if (doc.RootElement.TryGetProperty("name", out var nameElement2))
+                {
+                    userName = nameElement2.GetString() ?? "User";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.log", $"Error parsing token: {ex.Message}");
+        }
+    }
+}

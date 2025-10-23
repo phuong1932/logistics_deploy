@@ -1,0 +1,281 @@
+@page "/update-profile"
+@layout DashBoardLayout
+@attribute [Authorize]
+@inject IHttpClientFactory HttpClientFactory
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager NavigationManager
+@inject SweetAlertService Swal
+@inject JwtAuthService JwtAuthService
+@using System.Text.Json
+@using System.Text
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using LogisticsWebApp.DTO
+@using Blazored.LocalStorage
+@using System.ComponentModel.DataAnnotations
+@using logistic_web.application.Helpers
+<div class="container-fluid p-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-edit"></i> CẬP NHẬT THÔNG TIN CÁ NHÂN
+                    </h4>
+                    <button class="btn btn-light btn-sm" @onclick="GoBack">
+                        <i class="fas fa-arrow-left"></i> Quay lại
+                    </button>
+                </div>
+
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                            <p class="mt-2">Đang tải thông tin...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <EditForm Model="@profileModel" OnValidSubmit="HandleSubmit">
+                            <DataAnnotationsValidator />
+
+                            <div class="row">
+                                <!-- Họ tên -->
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">
+                                        Họ tên <span class="text-danger">*</span>
+                                    </label>
+                                    <InputText @bind-Value="profileModel.FullName" 
+                                               class="form-control" 
+                                               placeholder="Nhập họ tên" />
+                                    <ValidationMessage For="@(() => profileModel.FullName)" class="text-danger mt-2" />
+                                </div>
+
+                                <!-- Email -->
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">
+                                        Email <span class="text-danger">*</span>
+                                    </label>
+                                    <InputText @bind-Value="profileModel.Email" 
+                                               class="form-control" 
+                                               placeholder="Nhập email" />
+                                    <ValidationMessage For="@(() => profileModel.Email)" class="text-danger mt-2" />
+                                </div>
+
+                                <!-- Mật khẩu -->
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">
+                                        Mật khẩu mới <span class="text-danger">*</span>
+                                    </label>
+                                    <InputText type="password" 
+                                               @bind-Value="profileModel.Password" 
+                                               class="form-control" 
+                                               placeholder="Nhập mật khẩu mới" />
+                                    <ValidationMessage For="@(() => profileModel.Password)" class="text-danger mt-2" />
+                                </div>
+
+                                <!-- Xác nhận mật khẩu -->
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">
+                                        Xác nhận mật khẩu <span class="text-danger">*</span>
+                                    </label>
+                                    <InputText type="password" 
+                                               @bind-Value="confirmPassword" 
+                                               class="form-control" 
+                                               placeholder="Nhập lại mật khẩu" />
+                                    @if (!string.IsNullOrEmpty(confirmPassword) && confirmPassword != profileModel.Password)
+                                    {
+                                        <div class="text-danger mt-2">Mật khẩu xác nhận không khớp</div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                                            <i class="fas fa-times"></i> Hủy
+                                        </button>
+                                        <button type="submit" class="btn btn-primary" disabled="@(isSubmitting || !IsFormValid())">
+                                            @if (isSubmitting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                <span>Đang cập nhật...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-save"></i> 
+                                                <span>Cập nhật</span>
+                                            }
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private HttpClient _httpClient;
+    private UpdateProfileModel profileModel = new UpdateProfileModel(); 
+    private string confirmPassword = string.Empty;
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = HttpClientFactory.CreateClient("LogisticApi");
+        await LoadUserProfile();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        try
+        {
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (string.IsNullOrEmpty(token))
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            _httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _httpClient.GetAsync("user/profile");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonContent = await response.Content.ReadAsStringAsync();
+                var userInfo = JsonSerializer.Deserialize<UserModel>(jsonContent, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (userInfo != null)
+                {
+                    profileModel.FullName = userInfo.FullName ?? string.Empty;
+                    profileModel.Email = userInfo.Email;
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                await LocalStorage.RemoveItemAsync("token");
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Lỗi!",
+                Text = "Không thể tải thông tin người dùng",
+                Icon = SweetAlertIcon.Error
+            });
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (confirmPassword != profileModel.Password)
+        {
+            await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Lỗi!",
+                Text = "Mật khẩu xác nhận không khớp",
+                Icon = SweetAlertIcon.Error
+            });
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (string.IsNullOrEmpty(token))
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            _httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            
+
+            int userId = JwtAuthService.GetUserIdFromToken(token);
+            var response = await _httpClient.PutAsJsonAsync($"User/updateuser/{userId}", profileModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await Swal.FireAsync(new SweetAlertOptions
+                {
+                    Title = "Thành công!",
+                    Text = "Cập nhật thông tin thành công!",
+                    Icon = SweetAlertIcon.Success,
+                    Timer = 2000,
+                    ShowConfirmButton = false,
+                    TimerProgressBar = true
+                });
+
+                NavigationManager.NavigateTo("/dashboard");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                var errorResponse = JsonSerializer.Deserialize<ApiErrorResponse>(errorContent, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                await Swal.FireAsync(new SweetAlertOptions
+                {
+                    Title = "Lỗi!",
+                    Text = errorResponse?.Message ?? "Cập nhật thất bại",
+                    Icon = SweetAlertIcon.Error
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Lỗi!",
+                Text = "Đã xảy ra lỗi khi cập nhật thông tin",
+                Icon = SweetAlertIcon.Error
+            });
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/dashboard");
+    }
+
+    private bool IsFormValid()
+    {
+        return !string.IsNullOrWhiteSpace(profileModel.FullName) &&
+               !string.IsNullOrWhiteSpace(profileModel.Email) &&
+               !string.IsNullOrWhiteSpace(profileModel.Password) &&
+               !string.IsNullOrWhiteSpace(confirmPassword) &&
+               confirmPassword == profileModel.Password;
+    }
+
+
+}

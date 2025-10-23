@@ -1,0 +1,534 @@
+@page "/cargo-list"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin,user,staff")]
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using LogisticsWebApp.DTO
+@using LogisticsWebApp.Helper
+@inject NavigationManager NavigationManager
+@inject SweetAlertService Swal
+<div class="container-fluid p-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">DANH SÁCH HÓA ĐƠN ĐIỆN TỬ</h4>
+        </div>
+
+        <div class="card-body">
+            <!-- Thông báo lỗi -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle"></i> @errorMessage
+                    <button type="button" class="btn-close" @onclick="ClearError"></button>
+                </div>
+            }
+
+            <!-- Thông báo thành công -->
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle"></i> @successMessage
+                    <button type="button" class="btn-close" @onclick="ClearSuccess"></button>
+                </div>
+            }
+
+            <!-- Tìm kiếm -->
+            <div class="row mb-3 justify-content-end">
+                <div class="col-md-5 d-flex justify-content-end gap-2">
+                    <div style="min-width: 400px;">
+                        <input type="text" class="form-control" @bind="searchKeyword"
+                            placeholder="Nhập mã cargo hoặc tên khách hàng..." />
+                    </div>
+                    <div class="d-flex flex-column justify-content-end" style="width: 48px;">
+                        <button class="btn btn-primary w-100" style="height:38px; padding:0;" @onclick="SearchCargo">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex flex-column justify-content-end" style="width: 48px;">
+                        <button class="btn btn-danger w-100" style="height:38px; padding:0;" @onclick="ResetFilter">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            @if (isLoading)
+            {
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Bảng dữ liệu -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-primary">
+                            <tr>
+                                <th class="text-center" style="width: 50px;">
+                                    <input type="checkbox" @onchange="SelectAllCargo" />
+                                </th>
+                                <th class="text-center" style="width: 60px;">STT</th>
+                                <th class="text-center" style="width: 100px;">Chức năng</th>
+                                <th class="text-center" style="width: 120px;">Mã Cargo</th>
+                                <th class="text-center">Tên khách hàng</th>
+                                <th class="text-center">Nhân viên phụ trách</th>
+                                <th class="text-center">Nhân viên tạo</th>
+                                <th class="text-center">Địa chỉ</th>
+                                <th class="text-center" style="width: 110px;">Loại dịch vụ</th>
+                                <th class="text-center" style="width: 110px;">Ngày cấp phép</th>
+                                <th class="text-center" style="width: 110px;">Ngày giao dịch</th>
+                                <th class="text-center" style="width: 120px;">Tổng tiền (VNĐ)</th>
+                                <th class="text-center" style="width: 120px;">Tiền ứng (VNĐ)</th>
+                                <th class="text-center" style="width: 120px;">Phí ship (VNĐ)</th>
+                                <th class="text-center" style="width: 80px;">Số shipper</th>
+                                <th class="text-center" style="width: 110px;">Ngày tạo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (paginationService.PaginatedItems != null && paginationService.PaginatedItems.Any())
+                            {
+                                @for (int i = 0; i < paginationService.PaginatedItems.Count(); i++)
+                                {
+                                    var cargo = paginationService.PaginatedItems.ElementAt(i);
+                                    var index = (paginationService.CurrentPage - 1) * paginationService.PageSize + i + 1;
+                                    var rowClass = GetStatusRowClass(cargo.ServiceType);
+
+                                    <tr class="@rowClass">
+                                        <td class="text-center">
+                                            <input type="checkbox" @bind="cargo.IsSelected" />
+                                        </td>
+                                        <td class="text-center">@index</td>
+                                        <td class="text-center">
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-info me-1" @onclick="() => ViewCargoDetail(cargo.Id)"
+                                                    title="Xem">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-warning me-1" @onclick="() => EditCargo(cargo.Id)"
+                                                    title="Sửa">
+                                                    <i class="fas fa-pen"></i>
+                                                </button>
+                                                <button class="btn btn-danger" @onclick="() => DeleteCargo(cargo.Id)" title="Xóa">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">@cargo.CargoCode</td>
+                                        <td>@cargo.CustomerCompanyName</td>
+                                        <td>@cargo.CustomerPersonInCharge</td>
+                                        <td>@cargo.EmployeeCreate</td>
+                                        <td>@cargo.CustomerAddress</td>
+                                        <td class="text-center">
+                                            <span class="badge @GetStatusBadgeClass(cargo.ServiceType)">
+                                                @GetServiceTypeName(cargo.ServiceType)
+                                            </span>
+                                        </td>
+                                        <td class="text-center">@cargo.LicenseDate?.ToString("dd/MM/yyyy")</td>
+                                        <td class="text-center">@cargo.ExchangeDate?.ToString("dd/MM/yyyy")</td>
+                                        <td class="text-end">@cargo.EstimatedTotalAmount?.ToString("N0")</td>
+                                        <td class="text-end">@cargo.AdvanceMoney?.ToString("N0")</td>
+                                        <td class="text-end">@cargo.ShippingFee?.ToString("N0")</td>
+                                        <td class="text-center">@cargo.QuantityOfShipper</td>
+                                        <td class="text-center">@cargo.CreatedAt?.ToString("dd/MM/yyyy")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="16" class="text-center py-4">
+                                        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                                        <p class="text-muted mt-2">Không có dữ liệu</p>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Thông tin tổng số -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <strong>Tổng cộng có @paginationService.TotalItems kết quả, hiện thị trong @paginationService.TotalPages trang.</strong>
+                    </div>
+
+                    @if (paginationService.TotalPages > 1)
+                    {
+                        <!-- Phân trang -->
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination mb-0">
+                                <li class="page-item @(paginationService.CurrentPage == 1 ? "disabled" : "")">
+                                    <a class="page-link" @onclick="() => GoToFirstPage()" aria-label="First">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item @(paginationService.CurrentPage == 1 ? "disabled" : "")">
+                                    <a class="page-link" @onclick="() => GoToPreviousPage()" aria-label="Previous">
+                                        <span aria-hidden="true">&lsaquo;</span>
+                                    </a>
+                                </li>
+
+                                @for (int page = paginationService.GetStartPage(); page <= paginationService.GetEndPage(); page++)
+                                {
+                                    var pageNumber = page;
+                                    <li class="page-item @(paginationService.CurrentPage == pageNumber ? "active" : "")">
+                                        <a class="page-link" @onclick="() => GoToPage(pageNumber)">@pageNumber</a>
+                                    </li>
+                                }
+
+                                <li class="page-item @(paginationService.CurrentPage == paginationService.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" @onclick="() => GoToNextPage()" aria-label="Next">
+                                        <span aria-hidden="true">&rsaquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item @(paginationService.CurrentPage == paginationService.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" @onclick="() => GoToLastPage()" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+    private List<CargoModel> allCargos = new List<CargoModel>();
+    private PaginationService<CargoModel> paginationService = new PaginationService<CargoModel>(30);
+    private bool isLoading = true;
+    private string searchKeyword = "";
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCargos();
+    }
+
+    private async Task LoadCargos()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var response = await client.GetAsync("Cargo/getalllistcargo");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ApiResponse>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (result?.Success == true && result.Data != null)
+                {
+                    allCargos = result.Data.Select(c => new CargoModel
+                    {
+                        Id = c.Id,
+                        CargoCode = c.CargoCode,
+                        CustomerCompanyName = c.CustomerCompanyName,
+                        EmployeeCreate = c.EmployeeCreate,
+                        CustomerPersonInCharge = c.CustomerPersonInCharge,
+                        CustomerAddress = c.CustomerAddress,
+                        ServiceType = c.ServiceType,
+                        LicenseDate = c.LicenseDate,
+                        ExchangeDate = c.ExchangeDate,
+                        EstimatedTotalAmount = c.EstimatedTotalAmount,
+                        AdvanceMoney = c.AdvanceMoney,
+                        ShippingFee = c.ShippingFee,
+                        QuantityOfShipper = c.QuantityOfShipper,
+                        CreatedAt = c.CreatedAt
+                    }).ToList();
+
+                    paginationService.SetData(allCargos);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi tải dữ liệu: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SearchCargo()
+    {
+        if (string.IsNullOrWhiteSpace(searchKeyword))
+        {
+            await LoadCargos();
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+
+            // Thử tìm theo mã cargo trước
+            var response = await client.GetAsync($"Cargo/searchcargobynum?numOfCargo={searchKeyword}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ApiResponse>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (result?.Success == true && result.Data != null && result.Data.Any())
+                {
+                    allCargos = result.Data.Select(c => new CargoModel
+                    {
+                        Id = c.Id,
+                        CargoCode = c.CargoCode,
+                        CustomerCompanyName = c.CustomerCompanyName,
+                        EmployeeCreate = c.EmployeeCreate,
+                        CustomerPersonInCharge = c.CustomerPersonInCharge,
+                        CustomerAddress = c.CustomerAddress,
+                        ServiceType = c.ServiceType,
+                        LicenseDate = c.LicenseDate,
+                        ExchangeDate = c.ExchangeDate,
+                        EstimatedTotalAmount = c.EstimatedTotalAmount,
+                        AdvanceMoney = c.AdvanceMoney,
+                        ShippingFee = c.ShippingFee,
+                        QuantityOfShipper = c.QuantityOfShipper,
+                        CreatedAt = c.CreatedAt
+                    }).ToList();
+
+                    paginationService.SetData(allCargos);
+                    return;
+                }
+            }
+
+            // Nếu không tìm thấy theo mã, thử tìm theo tên khách hàng
+            response = await client.GetAsync($"Cargo/searchcargobycustomer?customerName={searchKeyword}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ApiResponse>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (result?.Success == true && result.Data != null)
+                {
+                    allCargos = result.Data.Select(c => new CargoModel
+                    {
+                        Id = c.Id,
+                        CargoCode = c.CargoCode,
+                        CustomerCompanyName = c.CustomerCompanyName,
+                        EmployeeCreate = c.EmployeeCreate,
+                        CustomerPersonInCharge = c.CustomerPersonInCharge,
+                        CustomerAddress = c.CustomerAddress,
+                        ServiceType = c.ServiceType,
+                        LicenseDate = c.LicenseDate,
+                        ExchangeDate = c.ExchangeDate,
+                        EstimatedTotalAmount = c.EstimatedTotalAmount,
+                        AdvanceMoney = c.AdvanceMoney,
+                        ShippingFee = c.ShippingFee,
+                        QuantityOfShipper = c.QuantityOfShipper,
+                        CreatedAt = c.CreatedAt
+                    }).ToList();
+
+                    paginationService.SetData(allCargos);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi tìm kiếm: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+
+
+    private void ResetFilter()
+    {
+        searchKeyword = "";
+        paginationService.GoToFirstPage();
+        _ = LoadCargos();
+    }
+
+    private void OnPageSizeChanged(ChangeEventArgs e)
+    {
+        var newPageSize = int.Parse(e.Value?.ToString() ?? "30");
+        paginationService.ChangePageSize(newPageSize);
+    }
+
+    // Phân trang
+    private void GoToFirstPage()
+    {
+        paginationService.GoToFirstPage();
+        StateHasChanged();
+    }
+
+    private void GoToLastPage()
+    {
+        paginationService.GoToLastPage();
+        StateHasChanged();
+    }
+
+    private void GoToNextPage()
+    {
+        paginationService.GoToNextPage();
+        StateHasChanged();
+    }
+
+    private void GoToPreviousPage()
+    {
+        paginationService.GoToPreviousPage();
+        StateHasChanged();
+    }
+
+    private void GoToPage(int page)
+    {
+        paginationService.GoToPage(page);
+        StateHasChanged();
+    }
+
+    // Actions
+    private void SelectAllCargo(ChangeEventArgs e)
+    {
+        var isChecked = e.Value != null && (bool)e.Value;
+        foreach (var cargo in paginationService.PaginatedItems)
+        {
+            cargo.IsSelected = isChecked;
+        }
+    }
+
+    private void ViewCargoDetail(int id)
+    {
+        NavigationManager.NavigateTo($"/cargo-detail/{id}");
+    }
+
+    private void EditCargo(int id)
+    {
+        NavigationManager.NavigateTo($"/edit-cargo/{id}", true, true);
+    }
+
+    private async Task DeleteCargo(int id)
+    {
+        // Dùng sweetalert2 để xác nhận thay vì confirm truyền thống
+        var result = await Swal.FireAsync(new SweetAlertOptions
+        {
+            Title = "Xác nhận xoá",
+            Text = "Bạn có chắc muốn xoá cargo?",
+            Icon = SweetAlertIcon.Warning,
+            ShowCancelButton = true,
+            ConfirmButtonText = "Xoá",
+            CancelButtonText = "Huỷ"
+        });
+        var confirmed = result.IsConfirmed;
+
+        // Khi sử dụng Swal.fire thì kết quả trả về là object, cần gọi lại JS để lấy kết quả
+        if (confirmed)
+        {
+            try
+            {
+                var client = HttpClientFactory.CreateClient("LogisticApi");
+                var response = await client.DeleteAsync($"Cargo/deletecargo/{id}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Icon = SweetAlertIcon.Success,
+                        Title = "Thành công",
+                        Text = "Xoá cargo thành công!",
+                        Timer = 1800,
+                        ShowConfirmButton = false
+                    });
+                    await LoadCargos();
+                }
+                else
+                {
+                    await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Icon = SweetAlertIcon.Error,
+                        Title = "Lỗi",
+                        Text = "Xoá cargo thất bại!"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+               Console.WriteLine(ex.Message);
+            }
+        }
+    }
+
+    // Helper methods
+    private string GetServiceTypeName(byte? typeOfService)
+    {
+        return typeOfService switch
+        {
+            0 => "Xuất khẩu",
+            1 => "Nhập khẩu",
+            2 => "Nội địa",
+            _ => "Chưa xác định"
+        };
+    }
+
+    private string GetStatusBadgeClass(byte? status)
+    {
+        return status switch
+        {
+            0 => "bg-primary",
+            1 => "bg-success",
+            2 => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusRowClass(byte? status)
+    {
+        return status switch
+        {
+            0 => "",
+            1 => "status-da-ky",
+            2 => "status-moi-tao",
+            _ => ""
+        };
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
+        StateHasChanged();
+    }
+
+    private void ClearSuccess()
+    {
+        successMessage = null;
+        StateHasChanged();
+    }
+
+}

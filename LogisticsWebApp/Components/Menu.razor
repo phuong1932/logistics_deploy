@@ -1,0 +1,91 @@
+@* Menu Navigation Component *@
+<nav class="main-menu">
+    <ul class="menu-list">
+        <li class="menu-item">
+            <NavLink class="menu-link" href="/dashboard" Match="NavLinkMatch.All">
+                <span class="menu-icon">🏠</span>
+                <span class="menu-text">Dashboard</span>
+            </NavLink>
+        </li>
+        
+       <li class="menu-item dropdown">
+            <a class="menu-link dropdown-toggle" href="#" @onclick="ToggleDonHang" @onclick:preventDefault>
+                <span class="menu-icon"><i class="fa-solid fa-file-invoice"></i></span>   
+                <span class="menu-text">Đơn hàng</span>
+                <span class="dropdown-arrow">▼</span>
+            </a>
+            @if (showDonHang)
+            {
+                <ul class="submenu">
+                    <li><NavLink class="submenu-link" href="/cargo-list">Danh sách đơn hàng</NavLink></li>
+                    <li><NavLink class="submenu-link" href="/create-cargo">Thêm đơn hàng</NavLink></li>
+                    <li><NavLink class="submenu-link" href="/storage_data">Lưu trữ dữ liệu</NavLink></li>
+                </ul>
+            }
+        </li>
+     <li class="menu-item dropdown">
+            <a class="menu-link dropdown-toggle" href="#" @onclick="ToggleKhachHang" @onclick:preventDefault>
+                <span class="menu-icon"><i class="fa-solid fa-user"></i></span>   
+                <span class="menu-text">Khách hàng</span>
+                <span class="dropdown-arrow">▼</span>
+            </a>
+            @if (showKhachHang)
+            {
+                <ul class="submenu">
+                    <li><NavLink class="submenu-link" href="/customer-list">Danh sách khách hàng</NavLink></li>
+                    <li><NavLink class="submenu-link" href="/create-customer">Thêm khách hàng</NavLink></li>
+                </ul>
+            }
+        </li>
+
+         <li class="menu-item dropdown">
+            <a class="menu-link dropdown-toggle" href="#" @onclick="ToggleNhanVien" @onclick:preventDefault>
+                <span class="menu-icon">👥</span>   
+                <span class="menu-text">Người dùng</span>
+                <span class="dropdown-arrow">▼</span>
+            </a>
+            @if (showNhanVien)
+            {
+                <ul class="submenu">
+                    <li><NavLink class="submenu-link" href="/user-list">Danh sách người dùng</NavLink></li>
+                    <li><NavLink class="submenu-link" href="/create-user">Thêm người dùng</NavLink></li>
+                </ul>
+            }
+        </li>
+
+
+   
+    </ul>
+</nav>
+
+
+@code {
+    private bool showDonHang = false;
+    private bool showKhachHang = false;
+    private bool showNhanVien = false;
+
+    private void ToggleDonHang()
+    {
+        showDonHang = !showDonHang;
+        // Đóng các dropdown khác
+        showKhachHang = false;
+        showNhanVien = false;
+    }
+
+    private void ToggleKhachHang()
+    {
+        showKhachHang = !showKhachHang;
+        // Đóng các dropdown khác
+        showDonHang = false;
+        showNhanVien = false;
+    }
+
+    private void ToggleNhanVien()
+    {
+        showNhanVien = !showNhanVien;
+        // Đóng các dropdown khác
+        showDonHang = false;
+        showKhachHang = false;
+    }
+}
+

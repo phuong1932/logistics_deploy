@@ -1,0 +1,243 @@
+@page "/user-detail/{id:int}"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin")]
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime JSRuntime
+@inject ILocalStorageService LocalStorage
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using LogisticsWebApp.DTO
+@using Blazored.LocalStorage
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">CHI TIẾT NGƯỜI DÙNG</h4>
+                    <button class="btn btn-light btn-sm" @onclick="GoBack">
+                        <i class="fas fa-arrow-left"></i> Quay lại
+                    </button>
+                </div>
+
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center p-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (user == null)
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> Không tìm thấy thông tin người dùng.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <!-- Thông tin cơ bản -->
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">Thông tin cơ bản</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-borderless">
+                                            <tbody>
+                                                <tr>
+                                                    <td class="fw-bold" style="width: 40%;">ID:</td>
+                                                    <td>@user.Id</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold">Tên đăng nhập:</td>
+                                                    <td>@user.Username</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold">Email:</td>
+                                                    <td>@user.Email</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold">Họ và tên:</td>
+                                                    <td>@user.FullName</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold">Ngày tạo:</td>
+                                                    <td>@user.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vai trò -->
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">Vai trò</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (user.Roles != null && user.Roles.Any())
+                                        {
+                                            <div class="d-flex flex-wrap gap-2">
+                                                @foreach (var role in user.Roles)
+                                                {
+                                                    <span class="badge @GetRoleBadgeClass(role) fs-6">
+                                                        @role
+                                                    </span>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted mb-0">Người dùng này chưa có vai trò nào.</p>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="card">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h5 class="mb-0">Thao tác</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-primary" @onclick="EditUser">
+                                                <i class="fas fa-edit"></i> Chỉnh sửa thông tin
+                                            </button>
+                                            <button class="btn btn-success" @onclick="ManageRoles">
+                                                <i class="fas fa-user-tag"></i> Quản lý vai trò
+                                            </button>
+                                            <button class="btn btn-danger" @onclick="DeleteUser">
+                                                <i class="fas fa-trash"></i> Xóa người dùng
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private UserModel? user;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserDetail();
+    }
+
+    private async Task LoadUserDetail()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            var response = await client.GetAsync($"User/{Id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                user = JsonSerializer.Deserialize<UserModel>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Không thể tải thông tin người dùng");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Lỗi khi tải dữ liệu: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/user-list");
+    }
+
+    private void EditUser()
+    {
+        NavigationManager.NavigateTo($"/edit-user/{Id}");
+    }
+
+    private void ManageRoles()
+    {
+        NavigationManager.NavigateTo($"/user-roles/{Id}");
+    }
+
+    private async Task DeleteUser()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"Bạn có chắc muốn xóa người dùng '{user?.Username}'? Hành động này không thể hoàn tác!");
+        
+        if (confirmed)
+        {
+            try
+            {
+                var client = HttpClientFactory.CreateClient("LogisticApi");
+                var token = await LocalStorage.GetItemAsync<string>("token");
+                if (!string.IsNullOrEmpty(token))
+                {
+                    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                }
+                var response = await client.DeleteAsync($"User/{Id}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Xóa người dùng thành công!");
+                    NavigationManager.NavigateTo("/user-list");
+                }
+                else
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    await JSRuntime.InvokeVoidAsync("alert", $"Xóa thất bại: {content}");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Lỗi khi xóa: {ex.Message}");
+            }
+        }
+    }
+
+    private string GetRoleBadgeClass(string role)
+    {
+        return role.ToLower() switch
+        {
+            "admin" => "bg-danger",
+            "user" => "bg-primary",
+            "staff" => "bg-success",
+            "manager" => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+}
+
