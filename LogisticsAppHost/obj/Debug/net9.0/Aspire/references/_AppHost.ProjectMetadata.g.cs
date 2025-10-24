@@ -8,5 +8,5 @@ namespace Projects;
 public class AppHost
 {
     private AppHost() { }
-    public static string ProjectPath => """C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep\logistic-web\LogisticsAppHost""";
+    public static string ProjectPath => """C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAppHost""";
 }

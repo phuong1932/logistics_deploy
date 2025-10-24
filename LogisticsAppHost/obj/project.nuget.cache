@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "N7jqTbYdZcs=",
+  "dgSpecHash": "0Qz5KTALNZU=",
   "success": true,
-  "projectFilePath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsAppHost\\AppHost.csproj",
+  "projectFilePath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsAppHost\\AppHost.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\MMTOS\\.nuget\\packages\\aspire.dashboard.sdk.win-x64\\9.0.0\\aspire.dashboard.sdk.win-x64.9.0.0.nupkg.sha512",
     "C:\\Users\\MMTOS\\.nuget\\packages\\aspire.hosting\\9.0.0\\aspire.hosting.9.0.0.nupkg.sha512",

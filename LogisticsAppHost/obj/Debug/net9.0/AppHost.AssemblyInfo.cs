@@ -17,14 +17,14 @@ using System.Reflection;
     "xt\\"))]
 [assembly: System.Reflection.AssemblyMetadata("dcpbinpath", ("C:\\Users\\MMTOS\\.nuget\\packages\\aspire.hosting.orchestration.win-x64\\9.0.0\\tools\\e" +
     "xt\\bin\\"))]
-[assembly: System.Reflection.AssemblyMetadata("apphostprojectpath", "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsAppHost")]
+[assembly: System.Reflection.AssemblyMetadata("apphostprojectpath", "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsAppHost")]
 [assembly: System.Reflection.AssemblyMetadata("apphostprojectname", "AppHost.csproj")]
 [assembly: System.Reflection.AssemblyMetadata("aspiredashboardpath", ("C:\\Users\\MMTOS\\.nuget\\packages\\aspire.dashboard.sdk.win-x64\\9.0.0\\tools\\Aspire.Da" +
     "shboard.exe"))]
 [assembly: System.Reflection.AssemblyCompanyAttribute("AppHost")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+62c496a4351370451c8c913de0f89c2f7147ebfb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+af5962bf13936570167f7684a345edeaf5883af7")]
 [assembly: System.Reflection.AssemblyProductAttribute("AppHost")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AppHost")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsWebApp\\LogisticsWebApp.csproj": {}
+    "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsWebApp\\LogisticsWebApp.csproj": {}
   },
   "projects": {
-    "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsWebApp\\LogisticsWebApp.csproj": {
+    "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsWebApp\\LogisticsWebApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsWebApp\\LogisticsWebApp.csproj",
+        "projectUniqueName": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsWebApp\\LogisticsWebApp.csproj",
         "projectName": "LogisticsWebApp",
-        "projectPath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsWebApp\\LogisticsWebApp.csproj",
+        "projectPath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsWebApp\\LogisticsWebApp.csproj",
         "packagesPath": "C:\\Users\\MMTOS\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsWebApp\\obj\\",
+        "outputPath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsWebApp\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\MMTOS\\AppData\\Roaming\\NuGet\\NuGet.Config"

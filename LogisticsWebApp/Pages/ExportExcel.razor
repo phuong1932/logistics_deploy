@@ -1,0 +1,403 @@
+@page "/export-excel"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin,user,staff")]
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using LogisticsWebApp.DTO
+@inject NavigationManager NavigationManager
+@inject SweetAlertService Swal
+
+<div class="container-fluid p-4">
+    <div class="card shadow">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-file-excel me-2"></i>
+                XUẤT DỮ LIỆU EXCEL
+            </h4>
+        </div>
+
+        <div class="card-body">
+            <!-- Thông báo lỗi -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle"></i> @errorMessage
+                    <button type="button" class="btn-close" @onclick="ClearError"></button>
+                </div>
+            }
+
+            <!-- Thông báo thành công -->
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle"></i> @successMessage
+                    <button type="button" class="btn-close" @onclick="ClearSuccess"></button>
+                </div>
+            }
+
+            <!-- Form xuất dữ liệu -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                Chọn khoảng thời gian xuất dữ liệu
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form @onsubmit="ExportToExcel" @onsubmit:preventDefault="true">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="dateBegin" class="form-label">
+                                                <i class="fas fa-calendar-start me-1"></i>
+                                                Từ ngày
+                                            </label>
+                                            <input type="date" 
+                                                   class="form-control" 
+                                                   id="dateBegin" 
+                                                   @bind="dateBegin" 
+                                                   required />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="dateEnd" class="form-label">
+                                                <i class="fas fa-calendar-end me-1"></i>
+                                                Đến ngày
+                                            </label>
+                                            <input type="date" 
+                                                   class="form-control" 
+                                                   id="dateEnd" 
+                                                   @bind="dateEnd" 
+                                                   required />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="includeAllData" 
+                                               @bind="includeAllData" />
+                                        <label class="form-check-label" for="includeAllData">
+                                            <i class="fas fa-database me-1"></i>
+                                            Xuất tất cả dữ liệu trong tháng hiện tại
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" 
+                                            class="btn btn-success" 
+                                            disabled="@isExporting">
+                                        @if (isExporting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                            <span>Đang xuất...</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-file-excel me-2"></i>
+                                            <span>Xuất Excel</span>
+                                        }
+                                    </button>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-secondary" 
+                                            @onclick="ResetForm">
+                                        <i class="fas fa-undo me-2"></i>
+                                        Làm mới
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Hướng dẫn
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-lightbulb me-1"></i> Lưu ý:</h6>
+                                <ul class="mb-0">
+                                    <li>Chọn khoảng thời gian để xuất dữ liệu cargo</li>
+                                    <li>File Excel sẽ chứa tất cả thông tin cargo trong khoảng thời gian đã chọn</li>
+                                    <li>Nếu chọn "Xuất tất cả dữ liệu trong tháng hiện tại", hệ thống sẽ xuất toàn bộ dữ liệu trong tháng hiện tại</li>
+                                    <li>File sẽ được tải xuống tự động sau khi xuất thành công</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thông tin xuất dữ liệu gần đây -->
+            @if (recentExports.Any())
+            {
+                <div class="mt-4">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2"></i>
+                                Lịch sử xuất dữ liệu gần đây
+                            </h5>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="ClearHistory" title="Xóa lịch sử">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Thời gian</th>
+                                            <th>Từ ngày</th>
+                                            <th>Đến ngày</th>
+                                            <th>Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var export in recentExports.Take(5))
+                                        {
+                                            <tr>
+                                                <td>@export.ExportTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                                <td>@export.DateBegin?.ToString("dd/MM/yyyy")</td>
+                                                <td>@export.DateEnd?.ToString("dd/MM/yyyy")</td>
+                                                <td>
+                                                    <span class="badge @(export.IsSuccess ? "bg-success" : "bg-danger")">
+                                                        @(export.IsSuccess ? "Thành công" : "Thất bại")
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private DateTime? dateBegin;
+    private DateTime? dateEnd;
+    private bool includeAllData = false;
+    private bool isExporting = false;
+    private string? errorMessage;
+    private string? successMessage;
+    
+    private List<ExportHistory> recentExports = new List<ExportHistory>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Set default date range to current month
+        var now = DateTime.Now;
+        dateBegin = new DateTime(now.Year, now.Month, 1);
+        dateEnd = now;
+        
+        // Load export history from localStorage
+        await LoadExportHistory();
+    }
+
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            isExporting = true;
+            errorMessage = null;
+            successMessage = null;
+            StateHasChanged();
+
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            
+            string url;
+            if (includeAllData)
+            {
+                // Xuất tất cả dữ liệu
+                url = "Cargo/exportcargodataexcel";
+            }
+            else
+            {
+                // Kiểm tra ngày
+                if (!dateBegin.HasValue || !dateEnd.HasValue)
+                {
+                    errorMessage = "Vui lòng chọn khoảng thời gian";
+                    return;
+                }
+
+                if (dateBegin > dateEnd)
+                {
+                    errorMessage = "Ngày bắt đầu không được lớn hơn ngày kết thúc";
+                    return;
+                }
+
+                url = $"Cargo/exportcargodataexcel?datebegin={dateBegin.Value:yyyy-MM-dd}&dateend={dateEnd.Value:yyyy-MM-dd}";
+            }
+
+            var response = await client.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsByteArrayAsync();
+                var fileName = includeAllData 
+                    ? $"BaoCaoLogistics_All_{DateTime.Now:ddMMyyyy_HHmm}.xlsx"
+                    : $"BaoCaoLogistics_{dateBegin:ddMMyyyy}_{dateEnd:ddMMyyyy}.xlsx";
+
+                // Download file using JavaScript
+                await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, Convert.ToBase64String(content));
+                
+                successMessage = "Xuất dữ liệu Excel thành công!";
+                
+                // Add to history
+                var newExport = new ExportHistory
+                {
+                    ExportTime = DateTime.Now,
+                    DateBegin = dateBegin,
+                    DateEnd = dateEnd,
+                    IsSuccess = true
+                };
+                recentExports.Insert(0, newExport);
+                await SaveExportHistory();
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Lỗi khi xuất dữ liệu: {response.StatusCode}";
+                
+                // Add to history
+                var newExport = new ExportHistory
+                {
+                    ExportTime = DateTime.Now,
+                    DateBegin = dateBegin,
+                    DateEnd = dateEnd,
+                    IsSuccess = false
+                };
+                recentExports.Insert(0, newExport);
+                await SaveExportHistory();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi xuất dữ liệu: {ex.Message}";
+            
+            // Add to history
+            var newExport = new ExportHistory
+            {
+                ExportTime = DateTime.Now,
+                DateBegin = dateBegin,
+                DateEnd = dateEnd,
+                IsSuccess = false
+            };
+            recentExports.Insert(0, newExport);
+            await SaveExportHistory();
+        }
+        finally
+        {
+            isExporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetForm()
+    {
+        var now = DateTime.Now;
+        dateBegin = new DateTime(now.Year, now.Month, 1);
+        dateEnd = now;
+        includeAllData = false;
+        errorMessage = null;
+        successMessage = null;
+        StateHasChanged();
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
+        StateHasChanged();
+    }
+
+    private void ClearSuccess()
+    {
+        successMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task LoadExportHistory()
+    {
+        try
+        {
+            var historyJson = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "exportHistory");
+            if (!string.IsNullOrEmpty(historyJson))
+            {
+                var history = JsonSerializer.Deserialize<List<ExportHistory>>(historyJson, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                if (history != null)
+                {
+                    recentExports = history;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't break the page
+            Console.WriteLine($"Error loading export history: {ex.Message}");
+        }
+    }
+
+    private async Task SaveExportHistory()
+    {
+        try
+        {
+            // Keep only last 10 exports to avoid localStorage bloat
+            if (recentExports.Count > 10)
+            {
+                recentExports = recentExports.Take(10).ToList();
+            }
+
+            var historyJson = JsonSerializer.Serialize(recentExports);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "exportHistory", historyJson);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't break the page
+            Console.WriteLine($"Error saving export history: {ex.Message}");
+        }
+    }
+
+    private async Task ClearHistory()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "exportHistory");
+            recentExports.Clear();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error clearing export history: {ex.Message}");
+        }
+    }
+
+    public class ExportHistory
+    {
+        public DateTime ExportTime { get; set; }
+        public DateTime? DateBegin { get; set; }
+        public DateTime? DateEnd { get; set; }
+        public bool IsSuccess { get; set; }
+    }
+}

@@ -18,7 +18,7 @@ namespace logistic_web.application.Services
         Task<bool> DeleteCargoAsync(int id);
         Task<IEnumerable<Cargolist>> SearchCargoByCustomerAsync(string customerName);
         Task<IEnumerable<Cargolist>> SearchCargoByNumAsync(string numOfCargo);
-        Task<byte[]> ExportCargoDataToExcelAsync();
+        Task<byte[]> ExportCargoDataToExcelAsync(DateTime? datebegin, DateTime? dateend);
         Task UpdateCargoFileBackgroundAsync(int id);
         
         // Lấy thống kê tổng hợp: số lượng + doanh thu
@@ -223,15 +223,25 @@ namespace logistic_web.application.Services
         }
 
 
-        public async Task<byte[]> ExportCargoDataToExcelAsync()
+        public async Task<byte[]> ExportCargoDataToExcelAsync(DateTime? datebegin, DateTime? dateend)
         {
             try
             {
-
-
-                // Cách mới cho EPPlus 7+
-                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-                var cargos = await _cargolistRepository.GetAllAsync();
+                IEnumerable<Cargolist> cargos;
+                
+                if (datebegin.HasValue && dateend.HasValue)
+                {
+                    // Xuất dữ liệu theo khoảng thời gian
+                    cargos = await _cargolistRepository.FindAsync(c => c.CreatedAt >= datebegin && c.CreatedAt <= dateend);
+                }
+                else
+                {
+                    // Nếu không có ngày bắt đầu/kết thúc, xuất dữ liệu theo tháng hiện tại
+                    var now = DateTime.Now;
+                    var firstDayOfMonth = new DateTime(now.Year, now.Month, 1);
+                    var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+                    cargos = await _cargolistRepository.FindAsync(c => c.CreatedAt >= firstDayOfMonth && c.CreatedAt <= lastDayOfMonth);
+                }
                 using (var package = new OfficeOpenXml.ExcelPackage())
                 {
                     // Sheet 1: Báo cáo Logistics

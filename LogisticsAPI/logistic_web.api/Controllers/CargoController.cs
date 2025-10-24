@@ -196,17 +196,28 @@ namespace logistic_web.api.Controllers
         }
 
         [HttpGet("exportcargodataexcel")]
-        public async Task<ActionResult<object>> ExportCargoDataExcel()
+        public async Task<ActionResult<object>> ExportCargoDataExcel([FromQuery] DateTime? datebegin, [FromQuery] DateTime? dateend)
         {
             try
             {
-                var fileContent = await _cargoService.ExportCargoDataToExcelAsync();
-                return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "BaoCaoLogistics.xlsx");
+                var fileContent = await _cargoService.ExportCargoDataToExcelAsync(datebegin, dateend);
+                
+                string fileName;
+                if (datebegin.HasValue && dateend.HasValue)
+                {
+                    fileName = $"BaoCaoLogistics_{datebegin:ddMMyyyy}_{dateend:ddMMyyyy}.xlsx";
+                }
+                else
+                {
+                    fileName = $"BaoCaoLogistics_All_{DateTime.Now:ddMMyyyy_HHmm}.xlsx";
+                }
+                
+                return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
             }
 
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi xuất dữ liệu Excel");
+                _logger.LogError(ex, "Lỗi khi xuất dữ liệu Excel: {DateBegin} - {DateEnd}", datebegin, dateend);
                 return StatusCode(500, new { success = false, message = "Lỗi server khi xuất dữ liệu Excel" });
             }
         }

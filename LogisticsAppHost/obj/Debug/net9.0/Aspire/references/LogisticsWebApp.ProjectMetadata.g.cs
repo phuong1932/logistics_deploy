@@ -7,5 +7,5 @@ namespace Projects;
 [global::System.Diagnostics.DebuggerDisplay("Type = {GetType().Name,nq}, ProjectPath = {ProjectPath}")]
 public class LogisticsWebApp : global::Aspire.Hosting.IProjectMetadata
 {
-    public string ProjectPath => """C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep\logistic-web\LogisticsWebApp\LogisticsWebApp.csproj""";
+    public string ProjectPath => """C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\LogisticsWebApp.csproj""";
 }

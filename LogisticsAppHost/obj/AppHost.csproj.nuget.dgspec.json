@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsAppHost\\AppHost.csproj": {}
+    "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsAppHost\\AppHost.csproj": {}
   },
   "projects": {
-    "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsAppHost\\AppHost.csproj": {
+    "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsAppHost\\AppHost.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsAppHost\\AppHost.csproj",
+        "projectUniqueName": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsAppHost\\AppHost.csproj",
         "projectName": "AppHost",
-        "projectPath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsAppHost\\AppHost.csproj",
+        "projectPath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsAppHost\\AppHost.csproj",
         "packagesPath": "C:\\Users\\MMTOS\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep\\logistic-web\\LogisticsAppHost\\obj\\",
+        "outputPath": "C:\\Users\\MMTOS\\Desktop\\net\\du-an-tot-nghiep-deploy\\logistic-web\\LogisticsAppHost\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\MMTOS\\AppData\\Roaming\\NuGet\\NuGet.Config"
