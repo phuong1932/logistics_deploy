@@ -99,6 +99,10 @@
                                         <label class="form-label fw-bold">Loại dịch vụ:</label>
                                         <p>@GetServiceTypeName(cargo.ServiceType)</p>
                                     </div>
+                                     <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Số lượng shipper:</label>
+                                        <p class="text-primary fw-bold">@cargo.QuantityOfShipper</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -123,10 +127,7 @@
                                         <label class="form-label fw-bold">Người phụ trách:</label>
                                         <p>@cargo.CustomerPersonInCharge</p>
                                     </div>
-                                    <div class="col-sm-6 mb-3">
-                                        <label class="form-label fw-bold">Số lượng shipper:</label>
-                                        <p class="text-primary fw-bold">@cargo.QuantityOfShipper</p>
-                                    </div>
+                                   
                                     <div class="col-12 mb-3">
                                         <label class="form-label fw-bold">Địa chỉ:</label>
                                         <p>@(cargo.CustomerAddress ?? "Chưa cập nhật")</p>
@@ -187,13 +188,7 @@
                                         <label class="form-label fw-bold">Ngày trao đổi:</label>
                                         <p>@(cargo.ExchangeDate?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</p>
                                     </div>
-                                    <div class="col-12">
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-info-circle me-2"></i>
-                                            <strong>Trạng thái:</strong> 
-                                            @GetStatusText()
-                                        </div>
-                                    </div>
+                                
                                 </div>
                             </div>
                         </div>
@@ -299,10 +294,9 @@
     {
         return serviceType switch
         {
-            1 => "Vận chuyển nhanh",
-            2 => "Vận chuyển tiêu chuẩn",
-            3 => "Vận chuyển hàng nặng",
-            4 => "Vận chuyển quốc tế",
+            0 => "Xuất khẩu",
+            1 => "Nhập khẩu",
+            2 => "Nội địa",
             _ => "Chưa xác định"
         };
     }

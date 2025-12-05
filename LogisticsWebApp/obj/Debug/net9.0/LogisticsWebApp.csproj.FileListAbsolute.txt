@@ -89,3 +89,7 @@ C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\obj\Debug\net9.0\LogisticsWebApp.pdb
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\obj\Debug\net9.0\LogisticsWebApp.genruntimeconfig.cache
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\obj\Debug\net9.0\ref\LogisticsWebApp.dll
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\obj\Debug\net9.0\rpswa.dswa.cache.json
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\obj\Debug\net9.0\rjimswa.dswa.cache.json
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsWebApp\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json

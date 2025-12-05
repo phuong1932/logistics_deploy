@@ -32,7 +32,7 @@ public partial class LogisticContext : DbContext
     {
         modelBuilder.Entity<Cargolist>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Cargolis__3213E83FB21C91A8");
+            entity.HasKey(e => e.Id).HasName("PK__Cargolis__3213E83F1D809154");
 
             entity.ToTable("Cargolist");
 
@@ -40,7 +40,7 @@ public partial class LogisticContext : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.AdvanceMoney)
-                .HasColumnType("decimal(10, 2)")
+                .HasColumnType("decimal(20, 2)")
                 .HasColumnName("advance_money");
             entity.Property(e => e.CargoCode)
                 .HasMaxLength(255)
@@ -61,7 +61,7 @@ public partial class LogisticContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("employee_create");
             entity.Property(e => e.EstimatedTotalAmount)
-                .HasColumnType("decimal(10, 2)")
+                .HasColumnType("decimal(20, 2)")
                 .HasColumnName("estimated_total_amount");
             entity.Property(e => e.ExchangeDate).HasColumnName("exchange_date");
             entity.Property(e => e.FilePathJson)
@@ -76,13 +76,13 @@ public partial class LogisticContext : DbContext
                 .HasDefaultValue((byte)0)
                 .HasColumnName("service_type");
             entity.Property(e => e.ShippingFee)
-                .HasColumnType("decimal(10, 2)")
+                .HasColumnType("decimal(20, 2)")
                 .HasColumnName("shipping_fee");
         });
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.CustomerId).HasName("PK__tmp_ms_x__A4AE64B8F1312569");
+            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__A4AE64B8585BB5DA");
 
             entity.ToTable("Customer");
 
@@ -96,9 +96,9 @@ public partial class LogisticContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Roles__3214EC077464FFB1");
+            entity.HasKey(e => e.Id).HasName("PK__Roles__3214EC079B502971");
 
-            entity.HasIndex(e => e.RoleName, "UQ__Roles__8A2B61601F9090D2").IsUnique();
+            entity.HasIndex(e => e.RoleName, "UQ__Roles__8A2B61605CD9B7C5").IsUnique();
 
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -110,11 +110,11 @@ public partial class LogisticContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Users__3214EC0742CCEA7D");
+            entity.HasKey(e => e.Id).HasName("PK__Users__3214EC070C45030F");
 
-            entity.HasIndex(e => e.Username, "UQ__Users__536C85E4FDBCF516").IsUnique();
+            entity.HasIndex(e => e.Username, "UQ__Users__536C85E45E2CEE97").IsUnique();
 
-            entity.HasIndex(e => e.Email, "UQ__Users__A9D1053448AF9F0E").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__Users__A9D10534A143B7E6").IsUnique();
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.CreatedAt)

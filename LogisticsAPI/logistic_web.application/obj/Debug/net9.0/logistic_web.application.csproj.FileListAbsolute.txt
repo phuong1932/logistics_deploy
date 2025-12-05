@@ -984,3 +984,7 @@ C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\log
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.application\obj\Debug\net9.0\logistic_web.application.pdb
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.application\obj\Debug\net9.0\logistic_web.application.genruntimeconfig.cache
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.application\obj\Debug\net9.0\ref\logistic_web.application.dll
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.application\obj\Debug\net9.0\rpswa.dswa.cache.json
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.application\obj\Debug\net9.0\rjimswa.dswa.cache.json
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.application\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.application\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
