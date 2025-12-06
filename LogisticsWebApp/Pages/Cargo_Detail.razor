@@ -99,7 +99,7 @@
                                         <label class="form-label fw-bold">Loại dịch vụ:</label>
                                         <p>@GetServiceTypeName(cargo.ServiceType)</p>
                                     </div>
-                                     <div class="col-sm-6 mb-3">
+                                    <div class="col-sm-6 mb-3">
                                         <label class="form-label fw-bold">Số lượng shipper:</label>
                                         <p class="text-primary fw-bold">@cargo.QuantityOfShipper</p>
                                     </div>
@@ -127,7 +127,7 @@
                                         <label class="form-label fw-bold">Người phụ trách:</label>
                                         <p>@cargo.CustomerPersonInCharge</p>
                                     </div>
-                                   
+                                
                                     <div class="col-12 mb-3">
                                         <label class="form-label fw-bold">Địa chỉ:</label>
                                         <p>@(cargo.CustomerAddress ?? "Chưa cập nhật")</p>
@@ -188,7 +188,7 @@
                                         <label class="form-label fw-bold">Ngày trao đổi:</label>
                                         <p>@(cargo.ExchangeDate?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</p>
                                     </div>
-                                
+                                 
                                 </div>
                             </div>
                         </div>
@@ -292,7 +292,7 @@
 
     private string GetServiceTypeName(byte? serviceType)
     {
-        return serviceType switch
+       return serviceType switch
         {
             0 => "Xuất khẩu",
             1 => "Nhập khẩu",
@@ -314,14 +314,7 @@
         return cargo.EstimatedTotalAmount.Value - cargo.AdvanceMoney.Value;
     }
 
-    private string GetStatusText()
-    {
-        if (cargo?.LicenseDate == null)
-            return "Chưa cấp phép";
-        if (cargo?.ExchangeDate == null)
-            return "Đã cấp phép, chưa trao đổi";
-        return "Đã hoàn thành";
-    }
+
 
     private void GoBack()
     {

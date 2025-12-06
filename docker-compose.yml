@@ -12,6 +12,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
+    volumes:
+      - ./shared-data:/app/wwwroot/cargo
     networks:
       - logistics-network
     restart: unless-stopped
@@ -28,6 +30,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - ApiBaseUrl=http://logistics-api:80
+    volumes:
+      - ./shared-data:/app/wwwroot/cargo  # Cùng volume với logistics-api
     depends_on:
       - logistics-api
     networks:

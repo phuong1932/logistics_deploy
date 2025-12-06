@@ -1116,8 +1116,13 @@ namespace logistic_web.application.Services
             {
                 string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
 
-                // Tạo đường dẫn thư mục: LogisticsWebApp/wwwroot/cargo/ngày hiện tại
-                string basePath = Path.Combine("..", "..", "LogisticsWebApp", "wwwroot", "cargo", "cargo_list", currentDate);
+                // Tạo đường dẫn thư mục tuyệt đối tới /app/wwwroot/cargo/cargo_list/ngày hiện tại
+                string basePath = Path.Combine("wwwroot", "cargo", "cargo_list", currentDate);
+            
+                // DEBUG: Log thư mục hiện tại và thư mục basePath để kiểm tra
+                string tempDebugPath = Path.GetFullPath(basePath);
+                _logger.LogInformation("DEBUG - Current Directory: {Dir}", Directory.GetCurrentDirectory());
+                _logger.LogInformation("DEBUG - Calculated basePath: {BasePath}", tempDebugPath);
 
                 // Log đường dẫn để debug
                 _logger.LogInformation("Đường dẫn thư mục: {Path}", Path.GetFullPath(basePath));
@@ -1142,10 +1147,19 @@ namespace logistic_web.application.Services
                 string fileContent = GenerateCargoJsonContent(cargo);
 
                 // Ghi file
-                await File.WriteAllTextAsync(filePath, fileContent);
+                try
+                {
+                    await File.WriteAllTextAsync(filePath, fileContent);
+                    _logger.LogInformation("DEBUG - Ghi file thành công: {FilePath}", Path.GetFullPath(filePath));
+                }
+                catch (Exception fileEx)
+                {
+                    _logger.LogError(fileEx, "DEBUG - Lỗi khi ghi file cargo ở đường dẫn: {FilePath}", Path.GetFullPath(filePath));
+                    throw; // Nếu muốn không throw thì có thể bỏ dòng này, hoặc trả về chuỗi lỗi tuỳ workflow
+                }
 
-                _logger.LogInformation("Đã tạo file cargo: {FilePath}", filePath);
-                return filePath;
+                _logger.LogInformation("Đã tạo file cargo: {FilePath}", Path.GetFullPath(filePath));
+                return Path.GetFullPath(filePath);
             }
             catch (Exception ex)
             {
