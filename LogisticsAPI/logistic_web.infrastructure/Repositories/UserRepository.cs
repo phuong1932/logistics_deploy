@@ -21,14 +21,14 @@ namespace logistic_web.infrastructure.Repositories
         public async Task<User?> GetByUsernameAsync(string username)
         {
             return await _context.Users
-                .Include(u => u.UserRoles)
+                .Include(u => u.UserRole)
                 .FirstOrDefaultAsync(u => u.Username == username);
         }
 
         public async Task<User?> GetByEmailAsync(string email)
         {
             return await _context.Users
-                .Include(u => u.UserRoles)
+                .Include(u => u.UserRole)
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
 
@@ -45,9 +45,10 @@ namespace logistic_web.infrastructure.Repositories
         public async Task<IEnumerable<User>> GetUsersByRoleAsync(int roleId)
         {
             return await _context.Users
-                .Include(u => u.UserRoles)
-                .Where(u => u.UserRoles.Any(ur => ur.RoleId == roleId) && u.Deleted != true)
+                .Include(u => u.UserRole)
+                .Where(u => u.UserRole != null && u.UserRole.RoleId == roleId && u.Deleted != true)
                 .ToListAsync();
         }
+        
     }
 }

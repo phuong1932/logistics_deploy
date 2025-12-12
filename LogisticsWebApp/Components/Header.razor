@@ -1,3 +1,7 @@
+@using Blazored.LocalStorage
+@using logistic_web.application.Helpers
+@inject ILocalStorageService LocalStorage
+@inject JwtAuthService JwtService
 
 <header class="top-header">
     <div class="header-container">
@@ -7,14 +11,13 @@
         </div>
         <div class="header-right">
             <div class="user-info">
-              
                 <div class="dropdown">
                     <button class="btn btn-link user-name dropdown-toggle" type="button" id="userDropdown"
                         data-bs-toggle="dropdown" aria-expanded="false"
                         style="color: white; background-color: transparent; text-decoration:none;">
-
-                        👤 Xin chào  <i class="fa fa-caret-down ms-1"></i>
-
+                        
+                        👤 Xin chào @userNameLoginCurrent <i class="fa fa-caret-down ms-1"></i>
+                        
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                         <li>
@@ -22,9 +25,7 @@
                                 <i class="fa fa-user"></i> Thông tin cá nhân
                             </a>
                         </li>
-                        <li>
-                            <hr class="dropdown-divider" />
-                        </li>
+                        <li><hr class="dropdown-divider" /></li>
                         <li>
                             <a class="dropdown-item" href="/logout">
                                 <i class="fa fa-sign-out-alt"></i> Đăng xuất
@@ -36,4 +37,25 @@
         </div>
     </div>
 </header>
- 
+
+@code {
+    public string userNameLoginCurrent = "User";
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                // Dùng method có sẵn trong JwtService
+                userNameLoginCurrent = JwtService.DecodePayloadToken(token);
+            }
+        }
+        catch
+        {
+            userNameLoginCurrent = "User";
+        }
+        
+    }
+}

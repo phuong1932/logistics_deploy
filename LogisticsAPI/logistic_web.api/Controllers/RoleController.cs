@@ -7,7 +7,7 @@ namespace logistic_web.api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,staff")]
     public class RoleController : ControllerBase
     {
         private readonly IRoleService _roleService;
@@ -56,7 +56,7 @@ namespace logistic_web.api.Controllers
             try
             {
                 var roles = await _roleService.GetAllRolesAsync();
-                return Ok(roles);
+                return Ok(new { success = true, data = roles, message = "Lấy danh sách roles thành công" });
             }
             catch (Exception ex)
             {

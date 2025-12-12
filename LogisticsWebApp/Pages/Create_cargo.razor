@@ -11,6 +11,7 @@
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using LogisticsWebApp.DTO
 
 <div class="container-fluid p-4">
@@ -40,7 +41,7 @@
                                             <div class="input-group">
                                                 <InputText @bind-Value="cargoModel.CustomerCompanyName"
                                                     class="form-control" placeholder="Nhập tên công ty khách hàng..."
-                                                    @oninput="OnCustomerNameInput" />
+                                                    @oninput="OnCustomerNameInput" autocomplete="off" />
                                                 <button class="btn btn-outline-secondary" type="button"
                                                     @onclick="ToggleCustomerDropdown">
                                                     <i class="fas fa-search"></i>
@@ -67,8 +68,10 @@
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Người phụ trách công ty</label>
-                                            <InputText @bind-Value="selectedCustomerPersonInCharge" class="form-control"
+                                            <InputText @bind-Value="cargoModel.CustomerPersonInCharge" class="form-control"
                                                 placeholder="Người phụ trách"/>
+                                            <ValidationMessage For="@(() => cargoModel.CustomerPersonInCharge)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
                                 </div>
@@ -83,6 +86,8 @@
                                             <label class="form-label">Nhân viên tạo</label>
                                             <InputText @bind-Value="cargoModel.EmployeeCreate" class="form-control"
                                                  />
+                                            <ValidationMessage For="@(() => cargoModel.EmployeeCreate)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
                                 </div>
@@ -103,6 +108,8 @@
                                             <label class="form-label">Mã Cargo</label>
                                             <InputText @bind-Value="cargoModel.CargoCode" class="form-control"
                                                 placeholder="Để trống để tự động tạo mã" />
+                                            <ValidationMessage For="@(() => cargoModel.CargoCode)"
+                                                class="text-danger" />
                                             <small class="text-muted">Nếu để trống, hệ thống sẽ tự động tạo mã</small>
                                         </div>
                                     </div>
@@ -126,6 +133,8 @@
                                         <div class="mb-3">
                                             <label class="form-label">Ngày giao dịch</label>
                                             <InputDate @bind-Value="cargoModel.ExchangeDate" class="form-control" />
+                                            <ValidationMessage For="@(() => cargoModel.ExchangeDate)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
 
@@ -133,6 +142,8 @@
                                         <div class="mb-3">
                                             <label class="form-label">Ngày nhận chứng từ</label>
                                             <InputDate @bind-Value="cargoModel.LicenseDate" class="form-control" />
+                                            <ValidationMessage For="@(() => cargoModel.LicenseDate)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
 
@@ -141,16 +152,44 @@
                                             <label class="form-label">Nơi giao hàng</label>
                                             <InputText @bind-Value="cargoModel.CustomerAddress" class="form-control"
                                                 placeholder="Địa điểm giao hàng" />
+                                            <ValidationMessage For="@(() => cargoModel.CustomerAddress)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
 
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label class="form-label">Số lượng shipper</label>
-                                            <InputNumber @bind-Value="cargoModel.QuantityOfShipper" class="form-control"
-                                                min="0" />
+                                            <label class="form-label">Shipper <span class="text-danger">*</span></label>
+                                            <InputSelect @bind-Value="cargoModel.IdShipper" class="form-select">
+                                                <option value="0">-- Chọn shipper --</option>
+                                                @if (shippers != null && shippers.Any())
+                                                {
+                                                    @foreach (var shipper in shippers)
+                                                    {
+                                                        <option value="@shipper.Id">@shipper.TenTaiXe - @GetLoaiXeName(shipper.LoaiXe)</option>
+                                                    }
+                                                }
+                                            </InputSelect>
+                                            <ValidationMessage For="@(() => cargoModel.IdShipper)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
+
+                                    @* <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Trạng thái đơn hàng <span class="text-danger">*</span></label>
+                                            <InputSelect @bind-Value="cargoModel.StatusCargo" class="form-select">
+                                                <option value="">-- Chọn trạng thái --</option>
+                                                <option value="1">Hoạt động</option>
+                                                <option value="2">Vô hiệu</option>
+                                                <option value="3">Chờ shipper nhận hàng</option>
+                                                <option value="4">Đang vận chuyển</option>
+                                                <option value="5">Hoàn thành đơn hàng</option>
+                                            </InputSelect>
+                                            <ValidationMessage For="@(() => cargoModel.StatusCargo)"
+                                                class="text-danger" />
+                                        </div>
+                                    </div> *@
                                 </div>
                             </div>
                         </div>
@@ -169,6 +208,8 @@
                                             <label class="form-label">Tổng tiền ước tính (VNĐ)</label>
                                             <InputNumber @bind-Value="cargoModel.EstimatedTotalAmount"
                                                 class="form-control" placeholder="0" />
+                                            <ValidationMessage For="@(() => cargoModel.EstimatedTotalAmount)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
 
@@ -177,6 +218,8 @@
                                             <label class="form-label">Tiền ứng (VNĐ)</label>
                                             <InputNumber @bind-Value="cargoModel.AdvanceMoney" class="form-control"
                                                 placeholder="0" />
+                                            <ValidationMessage For="@(() => cargoModel.AdvanceMoney)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
 
@@ -185,6 +228,8 @@
                                             <label class="form-label">Phí vận chuyển (VNĐ)</label>
                                             <InputNumber @bind-Value="cargoModel.ShippingFee" class="form-control"
                                                 placeholder="0" />
+                                            <ValidationMessage For="@(() => cargoModel.ShippingFee)"
+                                                class="text-danger" />
                                         </div>
                                     </div>
                                 </div>
@@ -239,9 +284,9 @@
 @code {
     private CreateCargoModel cargoModel = new CreateCargoModel();
     private List<CustomerModel> filteredCustomers = new List<CustomerModel>();
+    private List<ShipperModel> shippers = new List<ShipperModel>();
     private bool showCustomerDropdown = false;
     private bool isSubmitting = false;
-    private string selectedCustomerPersonInCharge = "";
     private string? errorMessage;
     private string? successMessage;
     HttpClient client;
@@ -253,6 +298,7 @@
         client = HttpClientFactory.CreateClient("LogisticApi");
 
         await LoadUserInfo();
+        await LoadShippers();
 
     }
     private async Task LoadUserInfo()
@@ -263,14 +309,41 @@
             var user = authState.User;
             if (user.Identity?.IsAuthenticated == true)
             {
-                // Lấy tên người dùng từ claim
                 var userName = user.Identity?.Name ?? user.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value;
                 cargoModel.EmployeeCreate = userName ?? "Unknown User";
             }
         }
-        catch (Exception ex)
+        catch
         {
-            await JSRuntime.InvokeVoidAsync("console.error", $"Lỗi khi lấy thông tin user: {ex.Message}");
+            cargoModel.EmployeeCreate = "Unknown User";
+        }
+    }
+
+    private async Task LoadShippers()
+    {
+        try
+        {
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            var response = await client.GetAsync("Shipper/getallshippers");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ApiResponse<ShipperModel>>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                shippers = result?.Data ?? new List<ShipperModel>();
+            }
+        }
+        catch
+        {
+            shippers = new List<ShipperModel>();
         }
     }
 
@@ -329,7 +402,6 @@
     {
         cargoModel.CustomerCompanyName = customer.CustomerName;
         cargoModel.CustomerAddress = customer.Address;
-        selectedCustomerPersonInCharge = customer.PersonInCharge ?? "";
         cargoModel.CustomerPersonInCharge = customer.PersonInCharge ?? "";
 
         showCustomerDropdown = false;
@@ -354,35 +426,32 @@
                 serviceType = string.IsNullOrEmpty(cargoModel.ServiceType) ? null : (byte?)byte.Parse(cargoModel.ServiceType),
                 exchangeDate = cargoModel.ExchangeDate,
                 licenseDate = cargoModel.LicenseDate,
-                nameOfLocation = cargoModel.NameOfLocation,
                 estimatedTotalAmount = cargoModel.EstimatedTotalAmount,
                 advanceMoney = cargoModel.AdvanceMoney,
                 shippingFee = cargoModel.ShippingFee,
-                quantityOfShipper = cargoModel.QuantityOfShipper
+                idShipper = cargoModel.IdShipper,
+                statusCargo = 1
             };
 
             var json = JsonSerializer.Serialize(requestData);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await client.PostAsync("Cargo/createcargo", content);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
+            var cargoresponse = await response.Content.ReadFromJsonAsync<HTTPResponseVM<CargoModel>>();
+            
             if (response.IsSuccessStatusCode)
             {
+                // Tạo tracking mới
+                var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Tạo đơn hàng thành công với id: " + cargoresponse.Data.Id + " và mã cargo: " + cargoresponse.Data.CargoCode });
                 successMessage = "Tạo đơn hàng thành công! Đang chuyển hướng...";
                 StateHasChanged();
-                
                 await Task.Delay(1500);
                 NavigationManager.NavigateTo("/cargo-list");
             }
             else
             {
-                var errorResult = JsonSerializer.Deserialize<ApiErrorResponse>(responseContent, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                errorMessage = errorResult?.Message ?? "Không thể tạo đơn hàng. Vui lòng thử lại!";
+                errorMessage = cargoresponse?.Message ?? "Không thể tạo đơn hàng. Vui lòng thử lại!";
                 StateHasChanged();
             }
         }
@@ -413,5 +482,16 @@
     {
         successMessage = null;
         StateHasChanged();
+    }
+
+        private string GetLoaiXeName(byte? loaiXe)
+    {
+        return loaiXe switch
+        {
+            0 => "Xe tải nhỏ",
+            1 => "Xe tải trung",
+            2 => "Xe tải lớn",
+            _ => "Chưa xác định"
+        };
     }
 }

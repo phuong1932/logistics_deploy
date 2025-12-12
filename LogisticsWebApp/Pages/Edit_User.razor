@@ -1,6 +1,6 @@
 @page "/edit-user/{id:int}"
 @layout DashBoardLayout
-@attribute [Authorize(Roles = "admin")]
+@attribute [Authorize(Roles = "admin,staff")]
 @inject IHttpClientFactory HttpClientFactory
 @inject IJSRuntime JSRuntime
 @inject ILocalStorageService LocalStorage
@@ -9,7 +9,10 @@
 @using Microsoft.AspNetCore.Authorization
 @using LogisticsWebApp.DTO
 @using Blazored.LocalStorage
+@using logistic_web.application.Helpers
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject JwtAuthService JwtAuthService
 
 <div class="container-fluid p-4">
     <div class="row justify-content-center">
@@ -149,16 +152,8 @@
                                             <h5 class="mb-0">Quản lý vai trò</h5>
                                         </div>
                                         <div class="card-body">
-                                            @if (isLoadingRoles)
-                                            {
-                                                <div class="text-center p-3">
-                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                                        <span class="visually-hidden">Đang tải roles...</span>
-                                                    </div>
-                                                </div>
-                                            }
-                                            else if (availableRoles != null && availableRoles.Any())
-                                            {
+                                         
+                                           
                                                
 
                                                 <!-- Select Role -->
@@ -166,26 +161,39 @@
                                                     <label class="form-label fw-bold">
                                                         Vai trò <span class="text-danger">*</span>
                                                     </label>
-                                                    <select @bind="selectedRoleId" class="form-select form-select-lg">
+                                                    <InputSelect @bind-Value="selectedRoleId" class="form-select form-select-lg">
                                                         <option value="0">-- Chọn vai trò --</option>
-                                                        @foreach (var role in availableRoles)
+                                                        @foreach (var role in GetFilteredRoles())
                                                         {
                                                             <option value="@role.Id">
                                                                 @role.RoleName
                                                                 @(!string.IsNullOrEmpty(role.Description) ? $" - {role.Description}" : "")
                                                             </option>
                                                         }
-                                                    </select>
+                                                    </InputSelect>
                                                 </div>
 
-                                            }
-                                            else
-                                            {
-                                                <div class="alert alert-warning">
-                                                    <i class="fas fa-exclamation-triangle"></i> 
-                                                    Không có vai trò nào để chọn
-                                                </div>
-                                            }
+                                                @* Hiển thị select shipper khi chọn role shipper *@
+                                                @if (selectedRoleId == 1002)
+                                                {
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">
+                                                            Chọn shipper liên kết <span class="text-danger">*</span>
+                                                        </label>
+                                                        <select class="form-select @(selectedShipperId == 0 ? "border-danger" : "")" @bind="selectedShipperId">
+                                                            <option value="0">-- Chọn shipper --</option>
+                                                            @if (listShippers != null && listShippers.Any())
+                                                            {
+                                                                @foreach (var shipper in listShippers)
+                                                                {
+                                                                    <option value="@shipper.Id">@shipper.TenTaiXe - @shipper.SoDienThoai</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                        <small class="text-danger fw-bold">Bắt buộc chọn shipper khi vai trò là Shipper</small>
+                                                    </div>
+                                                }
+
                                         </div>
                                     </div>
                                 </div>
@@ -241,21 +249,31 @@
 
     private UserUpdateModel? userModel;
     private List<RoleModel> availableRoles = new List<RoleModel>();
+    private List<ShipperModel> listShippers = new List<ShipperModel>();
     private int selectedRoleId = 0;
-    private int originalRoleId = 0;
+    private int selectedShipperId = 0;
     private bool isLoading = true;
-    private bool isLoadingRoles = true;
     private bool isSubmitting = false;
     private bool showPassword = false;
+    private string? currentUserRole = null;
     private bool showConfirmPassword = false;
     private string? errorMessage;
     private string? successMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        // Lấy role của user hiện tại
+        var token = await LocalStorage.GetItemAsync<string>("token");
+        if (!string.IsNullOrEmpty(token))
+        {
+           
+                currentUserRole = JwtAuthService.GetRoleFromToken(token);
+          
+        }
         
         await LoadUserDetail();
         await LoadAvailableRoles();
+        await LoadShippers();
     }
 
     private async Task LoadUserDetail()
@@ -275,20 +293,17 @@
 
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync();
-                var user = JsonSerializer.Deserialize<UserModel>(content, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                
+            var user = await response.Content.ReadFromJsonAsync<HTTPResponseVM<UserModel>>();
 
                 if (user != null)
                 {
-                    userModel = new UserUpdateModel
+                    userModel = new UserUpdateModel 
                     {
-                        Id = user.Id,
-                        Username = user.Username,
-                        Email = user.Email,
-                        FullName = user.FullName
+                        Id = user.Data.Id,
+                        Username = user.Data.Username,
+                        Email = user.Data.Email,
+                        FullName = user.Data.FullName,
                     };
                 }
             }
@@ -310,10 +325,7 @@
 
     private async Task LoadAvailableRoles()
     {
-        try
-        {
-            isLoadingRoles = true;
-            StateHasChanged();
+       
 
             // Load all roles
             var client = HttpClientFactory.CreateClient("LogisticApi");
@@ -325,52 +337,88 @@
             var rolesResponse = await client.GetAsync("Role");
             if (rolesResponse.IsSuccessStatusCode)
             {
-                var rolesContent = await rolesResponse.Content.ReadAsStringAsync();
-                var roles = JsonSerializer.Deserialize<List<RoleModel>>(rolesContent, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                var roles = await rolesResponse.Content.ReadFromJsonAsync<HTTPResponseVM<List<RoleModel>>>();
 
                 if (roles != null)
                 {
-                    availableRoles = roles;
+                    availableRoles = roles.Data.ToList();
                 }
             }
 
             // Load user's current role
-            var userResponse = await client.GetAsync($"User/getuserbyid/{Id}");
-            if (userResponse.IsSuccessStatusCode)
-            {
-                var userContent = await userResponse.Content.ReadAsStringAsync();
-                var user = JsonSerializer.Deserialize<UserModel>(userContent, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+            var    userRoleResponse  = await client.GetAsync($"UserRole/GetUserRolesbyuserid/{Id}");
 
-                if (user != null && user.Roles != null && user.Roles.Any())
+            if (userRoleResponse.IsSuccessStatusCode)
+            {
+              
+                var userroles = await userRoleResponse.Content.ReadFromJsonAsync<HTTPResponseVM<List<UserRoleModel>>>();
+
+                if (userroles != null)
                 {
                     // Lấy role đầu tiên (giả sử mỗi user chỉ có 1 role chính)
-                    var userRoleName = user.Roles.First();
-                    var userRole = availableRoles.FirstOrDefault(r => r.RoleName.Equals(userRoleName, StringComparison.OrdinalIgnoreCase));
                     
-                    if (userRole != null)
+                    if (userroles != null && userroles.Data != null && userroles.Data.Any())
                     {
-                        selectedRoleId = userRole.Id;
-                        originalRoleId = userRole.Id;
+                        var userRole = userroles.Data.First();
+                        selectedRoleId = userRole.RoleId;
+                        selectedShipperId = userRole.ShipperId ?? 0;
                     }
+                }
+            }
+    
+    }
+
+    private async Task LoadShippers()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            var response = await client.GetAsync("Shipper/getallshippers");
+            if (response.IsSuccessStatusCode)
+            {
+                var apiResult = await response.Content.ReadFromJsonAsync<HTTPResponseVM<List<ShipperModel>>>();
+                if (apiResult != null && apiResult.Data != null)
+                {
+                    listShippers = apiResult.Data.ToList();
                 }
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Lỗi khi tải danh sách vai trò: {ex.Message}";
-        }
-        finally
-        {
-            isLoadingRoles = false;
-            StateHasChanged();
+            await JSRuntime.InvokeVoidAsync("console.error", $"Error loading shippers: {ex.Message}");
         }
     }
+
+    private List<RoleModel> GetFilteredRoles()
+    {
+        if (string.IsNullOrEmpty(currentUserRole))
+        {
+            return availableRoles;
+        }
+
+        var roleLower = currentUserRole.ToLower();
+        
+        // Nếu là admin: hiển thị tất cả roles
+        if (roleLower == "admin")
+        {
+            return availableRoles;
+        }
+        
+        // Nếu là staff: chỉ hiển thị role shipper
+        if (roleLower == "staff")
+        {
+            return availableRoles.Where(r => r.RoleName.ToLower() == "shipper").ToList();
+        }
+
+        // Mặc định: trả về tất cả
+        return availableRoles;
+    }
+            
 
 
     private async Task HandleSubmit()
@@ -385,6 +433,13 @@
                     errorMessage = "Mật khẩu xác nhận không khớp";
                     return;
                 }
+            }
+
+            // Validate: Nếu chọn role shipper thì phải chọn shipper
+            if (selectedRoleId == 1002 && (selectedShipperId == 0 || selectedShipperId == null))
+            {
+                errorMessage = "Vui lòng chọn shipper liên kết khi chọn vai trò Shipper";
+                return;
             }
 
             isSubmitting = true;
@@ -417,32 +472,25 @@
                 return;
             }
 
-            // 2. Update role (nếu có thay đổi)
-            if (selectedRoleId != originalRoleId)
+            // 2. Update role và shipper
+            var updateRoleRequest = new 
+            { 
+                roleId = selectedRoleId,
+                shipperId = selectedRoleId == 1002 && selectedShipperId > 0 ? (int?)selectedShipperId : null
+            };
+            var updateJson = JsonSerializer.Serialize(updateRoleRequest);
+            var updateContent = new StringContent(updateJson, Encoding.UTF8, "application/json");
+            
+            var updateResponse = await client.PutAsync($"UserRole/update/{Id}", updateContent);
+            if (!updateResponse.IsSuccessStatusCode)
             {
-                // Xóa role cũ
-                if (originalRoleId > 0)
-                {
-                    var removeRequest = new { userId = Id, roleId = originalRoleId };
-                    var removeJson = JsonSerializer.Serialize(removeRequest);
-                    var removeContent = new StringContent(removeJson, Encoding.UTF8, "application/json");
-                    var request = new HttpRequestMessage(HttpMethod.Delete, "User/remove-role")
-                    {
-                        Content = removeContent
-                    };
-                    await client.SendAsync(request);
-                }
-
-                // Gán role mới
-                if (selectedRoleId > 0)
-                {
-                    var assignRequest = new { userId = Id, roleId = selectedRoleId };
-                    var assignJson = JsonSerializer.Serialize(assignRequest);
-                    var assignContent = new StringContent(assignJson, Encoding.UTF8, "application/json");
-                    await client.PostAsync("User/assign-role", assignContent);
-                }
+                var errorContent = await updateResponse.Content.ReadAsStringAsync();
+                errorMessage = $"Cập nhật vai trò thất bại: {errorContent}";
+                return;
             }
-
+            // Tạo tracking mới
+            var username = CustomAuthStateProvider.UserNameLoginCurrent;
+            await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Cập nhật người dùng thành công với id: " + Id });
             successMessage = "Cập nhật thành công! Đang chuyển hướng...";
             StateHasChanged();
 

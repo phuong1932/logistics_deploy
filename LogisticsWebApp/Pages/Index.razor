@@ -1,10 +1,19 @@
 @page "/"
 @inject NavigationManager Navigation
-
+@inject JwtAuthService JwtService   
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Redirect trang chủ đến login
-        Navigation.NavigateTo("/login", true);
+        var token = await LocalStorage.GetItemAsync<string>("token");
+        
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
+        
+        var homePage = JwtService.GetHomePageByRole(token);
+        Navigation.NavigateTo(homePage, true);
     }
 }

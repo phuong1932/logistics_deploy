@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("logistic_web.application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cfb3b067db6bb260c21fc278d4b8588098a9746b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+938739e8e23780515e717ecbd6e729470ad960c1")]
 [assembly: System.Reflection.AssemblyProductAttribute("logistic_web.application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("logistic_web.application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

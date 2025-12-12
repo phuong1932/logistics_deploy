@@ -29,7 +29,7 @@ namespace logistic_web.api.Controllers
             try
             {
                 var customers = await _customerService.GetAllCustomersAsync();
-                return Ok(customers);
+                return Ok( new { success = true, data = customers, message = "Lấy danh sách customer thành công" });
             }
             catch (Exception ex)
             {
@@ -52,7 +52,7 @@ namespace logistic_web.api.Controllers
                     return NotFound(new { message = "Không tìm thấy customer" });
                 }
 
-                return Ok(customer);
+                return Ok( new { success = true, data = customer, message = "Lấy thông tin customer thành công" });
             }
             catch (Exception ex)
             {

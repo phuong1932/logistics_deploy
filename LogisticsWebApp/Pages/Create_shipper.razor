@@ -1,0 +1,250 @@
+@page "/create-shipper"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "admin,staff")]
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime JSRuntime
+@inject ILocalStorageService LocalStorage
+@using System.Text.Json
+@using System.Text
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using LogisticsWebApp.DTO
+@using Blazored.LocalStorage
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid p-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus"></i> THÊM MỚI TÀI XẾ
+                    </h4>
+                    <button class="btn btn-light btn-sm" @onclick="GoBack">
+                        <i class="fas fa-arrow-left"></i> Quay lại
+                    </button>
+                </div>
+
+                <div class="card-body">
+                    <EditForm Model="@shipperModel" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+
+                        <div class="row">
+                            <!-- Tên tài xế -->
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label fw-bold">
+                                    Tên tài xế <span class="text-danger">*</span>
+                                </label>
+                                <InputText @bind-Value="shipperModel.TenTaiXe" 
+                                           class="form-control" 
+                                           placeholder="Nhập tên tài xế" />
+                                <ValidationMessage For="@(() => shipperModel.TenTaiXe)" class="text-danger mt-2" />
+                            </div>
+
+                            <!-- Loại xe -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">
+                                    Loại xe <span class="text-danger">*</span>
+                                </label>
+                                <InputSelect @bind-Value="shipperModel.LoaiXe" class="form-select">
+                                    <option value="">-- Chọn loại xe --</option>
+                                    <option value="0">Xe tải nhỏ</option>
+                                    <option value="1">Xe tải trung</option>
+                                    <option value="2">Xe tải lớn</option>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => shipperModel.LoaiXe)" class="text-danger mt-2" />
+                            </div>
+
+                            <!-- Số điện thoại -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">
+                                    Số điện thoại
+                                </label>
+                                <InputText @bind-Value="shipperModel.SoDienThoai" 
+                                           class="form-control" 
+                                           placeholder="Nhập số điện thoại" />
+                                <ValidationMessage For="@(() => shipperModel.SoDienThoai)" class="text-danger mt-2" />
+                            </div>
+
+                            <!-- Địa chỉ -->
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label fw-bold">
+                                    Địa chỉ
+                                </label>
+                                <textarea @bind="shipperModel.DiaChi" 
+                                          class="form-control" 
+                                          rows="3"
+                                          placeholder="Nhập địa chỉ"></textarea>
+                                <ValidationMessage For="@(() => shipperModel.DiaChi)" class="text-danger mt-2" />
+                            </div>
+                        </div>
+
+                        <!-- Thông báo lỗi -->
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fas fa-exclamation-circle"></i> @errorMessage
+                                <button type="button" class="btn-close" @onclick="ClearError"></button>
+                            </div>
+                        }
+
+                        <!-- Thông báo thành công -->
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fas fa-check-circle"></i> @successMessage
+                                <button type="button" class="btn-close" @onclick="ClearSuccess"></button>
+                            </div>
+                        }
+
+                        <!-- Buttons -->
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-secondary" @onclick="ResetForm">
+                                <i class="fas fa-redo"></i> Làm mới
+                            </button>
+                            <button type="submit" class="btn btn-success" disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Đang tạo...</span>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-save"></i>
+                                    <span>Tạo tài xế</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+
+            <!-- Hướng dẫn -->
+            <div class="card shadow mt-3">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb"></i> Lưu ý
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>Tên tài xế là thông tin bắt buộc</li>
+                        <li>Loại xe: 0 - Xe tải nhỏ, 1 - Xe tải trung, 2 - Xe tải lớn</li>
+                        <li>Số điện thoại nên có định dạng hợp lệ</li>
+                        <li>Thông tin địa chỉ là tùy chọn</li>
+                        <li>Bạn có thể cập nhật thông tin tài xế sau khi tạo</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ShipperModel shipperModel = new ShipperModel();
+
+    private bool isSubmitting = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private void ClearError()
+    {
+        errorMessage = null;
+    }
+
+    private void ClearSuccess()
+    {
+        successMessage = null;
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            isSubmitting = true;
+            errorMessage = null;
+            successMessage = null;
+            StateHasChanged();
+                          
+
+            // Tạo request body
+            var createRequest = new
+            {
+                tenTaiXe = shipperModel.TenTaiXe,
+                loaiXe = shipperModel.LoaiXe,
+                soDienThoai = shipperModel.SoDienThoai,
+                diaChi = shipperModel.DiaChi
+            };
+
+
+            var json = JsonSerializer.Serialize(createRequest);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            var response = await client.PostAsync("Shipper/createshipper", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Tạo tracking mới
+                var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Tạo tài xế thành công: " + shipperModel.TenTaiXe });
+                successMessage = "Tạo tài xế thành công! Đang chuyển hướng...";
+                StateHasChanged();
+                
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo("/shipper-list");
+            }
+            else
+            {
+                // Parse error message
+                try
+                {
+                    var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseContent);
+                    if (errorResponse.TryGetProperty("message", out var messageProperty))
+                    {
+                        errorMessage = messageProperty.GetString();
+                    }
+                    else
+                    {
+                        errorMessage = "Tạo tài xế thất bại. Vui lòng kiểm tra lại thông tin.";
+                    }
+                }
+                catch
+                {
+                    errorMessage = "Tạo tài xế thất bại. Vui lòng kiểm tra lại thông tin.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetForm()
+    {
+        shipperModel = new ShipperModel();
+        errorMessage = null;
+        successMessage = null;
+        StateHasChanged();
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/shipper-list");
+    }
+}
+

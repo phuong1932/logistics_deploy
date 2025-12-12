@@ -14,8 +14,10 @@ namespace LogisticsWebApp.DTO
         public decimal? EstimatedTotalAmount { get; set; }
         public decimal? AdvanceMoney { get; set; }
         public decimal? ShippingFee { get; set; }
-        public int QuantityOfShipper { get; set; }
+        public int IdShipper { get; set; }
+        public string? NameShipper { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public byte? StatusCargo { get; set; }
         public string? FilePath { get; set; }
         public bool IsSelected { get; set; }
     }

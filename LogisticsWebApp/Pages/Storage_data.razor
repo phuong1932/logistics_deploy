@@ -1,6 +1,6 @@
 @page "/Storage_data"
 @layout DashBoardLayout
-@attribute [Authorize(Roles = "admin,user,staff")]
+@attribute [Authorize(Roles = "admin")]
 @inject IJSRuntime JSRuntime
 @using System.IO
 @using System.Linq
@@ -27,8 +27,6 @@
                     <button class="btn btn-sm btn-secondary" @onclick="GoBack">← Back</button>
                 }
                 <button class="btn btn-sm btn-info" @onclick="RefreshCargoDirectories">🔄 Refresh All</button>
-                @* <button class="btn btn-sm btn-success" @onclick="CreateNewFolder">📁 New Folder</button>
-                <button class="btn btn-sm btn-primary" @onclick="CreateNewFile">📄 New File</button> *@
             </div>
 
             <div class="section mt-4">
@@ -122,7 +120,6 @@
                                     else
                                     {
                                         <button class="btn btn-sm btn-primary" @onclick="() => DownloadFile(file)">Download</button>
-                                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteFile(file)">Delete</button>
                                         <button class="btn btn-sm btn-success" @onclick="() => ShowFileData(file)">Show data</button>
                                     }
                                 </td>
@@ -205,8 +202,12 @@
                                     <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "serviceType", "name") (@GetJsonValue(cargoData, "cargoInfo", "serviceType", "code"))</span>
                                 </div>
                                 <div class="info-item">
-                                    <span class="info-label">Số lượng shipper:</span>
-                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "logistics", "quantityOfShipper")</span>
+                                    <span class="info-label">Shipper ID:</span>
+                                    <span class="info-value">@GetJsonValue(cargoData, "cargoInfo", "logistics", "idShipper")</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Trạng thái đơn hàng:</span>
+                                    <span class="info-value">@GetStatusCargoName(int.Parse(GetJsonValue(cargoData, "cargoInfo", "logistics", "statusCargo") ?? "1"))</span>
                                 </div>
                             </div>
                         </div>
@@ -522,11 +523,49 @@
             return $"{(int)(timeSpan.TotalDays / 365)} năm trước";
     }
 
-    private void DownloadFile(FileItem file)
-    {
-        // Implement download logic
-        Console.WriteLine($"Downloading file: {file.Name}");
-    }
+        private void DownloadFile(FileItem file)
+        {
+        if (file == null || file.Type != "File")
+        {
+            // Không phải file hoặc null, không xử lý
+            return;
+        }
+
+        try
+        {
+            // Xác định đường dẫn file vật lý, dựa vào currentPath và tên file
+            string folderRoot = Path.Combine("wwwroot", "cargo", GetOriginalName(currentPath.FirstOrDefault() ?? ""));
+            string fullPath = folderRoot;
+
+            // Thêm các thư mục con theo path (bỏ folder gốc đầu tiên)
+            for (int i = 1; i < currentPath.Count; i++)
+            {
+                fullPath = Path.Combine(fullPath, currentPath[i]);
+            }
+            string filePath = Path.Combine(fullPath, file.Name);
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                // Có thể hiện modal lỗi, hoặc hiển thị thông báo
+                Console.WriteLine("File không tồn tại: " + filePath);
+                return;
+            }
+
+            // Đọc nội dung file về dạng byte[]
+            byte[] fileBytes = System.IO.File.ReadAllBytes(filePath);
+
+            // Gửi file tới trình duyệt (chỉ hoạt động với Blazor Server, với Blazor WASM cần sử dụng JS)
+            // Ở đây ta sử dụng Blazor WASM, nên cần gọi JS để trigger download
+            var fileName = file.Name;
+            var base64 = Convert.ToBase64String(fileBytes);
+            var mimeType = "application/json";
+            JSRuntime.InvokeVoidAsync("downloadFileFromBase64", fileName, base64, mimeType);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi khi tải file:" + ex.Message);
+        }
+        }
 
     private List<FileItem> Folders = new List<FileItem>();
     private List<FileItem> Files = new List<FileItem>();
@@ -1057,5 +1096,18 @@
         {
             return "-";
         }
+    }
+
+    private string GetStatusCargoName(int status)
+    {
+        return status switch
+        {
+            1 => "Chờ duyệt",
+            2 => "Vô hiệu",
+            3 => "Chờ shipper nhận hàng",
+            4 => "Đang vận chuyển",
+            6 => "Hoàn thành đơn hàng",
+            _ => "Không xác định"
+        };
     }
 }

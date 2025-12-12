@@ -80,8 +80,10 @@
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">Người phụ trách công ty</label>
-                                                <InputText @bind-Value="selectedCustomerPersonInCharge" class="form-control"
+                                                <InputText @bind-Value="cargoModel.CustomerPersonInCharge" class="form-control"
                                                     placeholder="Người phụ trách"  />
+                                                <ValidationMessage For="@(() => cargoModel.CustomerPersonInCharge)"
+                                                    class="text-danger" />
                                             </div>
                                         </div>
                                     </div>
@@ -159,9 +161,35 @@
 
                                         <div class="col-md-6">
                                             <div class="mb-3">
-                                                <label class="form-label">Số lượng shipper</label>
-                                                <InputNumber @bind-Value="cargoModel.QuantityOfShipper" class="form-control"
-                                                    min="0" />
+                                                <label class="form-label">Shipper <span class="text-danger">*</span></label>
+                                                <InputSelect @bind-Value="cargoModel.IdShipper" class="form-select">
+                                                    <option value="0">-- Chọn shipper --</option>
+                                                    @if (shippers != null && shippers.Any())
+                                                    {
+                                                        @foreach (var shipper in shippers)
+                                                        {
+                                                            <option value="@shipper.Id">@shipper.TenTaiXe - @GetLoaiXeName(shipper.LoaiXe)</option>
+                                                        }
+                                                    }
+                                                </InputSelect>
+                                                <ValidationMessage For="@(() => cargoModel.IdShipper)"
+                                                    class="text-danger" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Trạng thái đơn hàng <span class="text-danger">*</span></label>
+                                                <InputSelect @bind-Value="cargoModel.StatusCargo" class="form-select">
+                                                    <option value="">-- Chọn trạng thái --</option>
+                                                    <option value="1">Hoạt động</option>
+                                                    <option value="2">Vô hiệu</option>
+                                                    <option value="3">Chờ shipper nhận hàng</option>
+                                                    <option value="4">Đang vận chuyển</option>
+                                                    <option value="5">Hoàn thành đơn hàng</option>
+                                                </InputSelect>
+                                                <ValidationMessage For="@(() => cargoModel.StatusCargo)"
+                                                    class="text-danger" />
                                             </div>
                                         </div>
                                     </div>
@@ -269,10 +297,10 @@
 
     public CreateCargoModel? cargoModel;
     private List<CustomerModel> filteredCustomers = new List<CustomerModel>();
+    private List<ShipperModel> shippers = new List<ShipperModel>();
     private bool showCustomerDropdown = false;
     private bool isSubmitting = false;
     private bool isLoading = true;
-    private string selectedCustomerPersonInCharge = "";
     private string? errorMessage;
     private string? successMessage;
     HttpClient? client;
@@ -280,7 +308,41 @@
     protected override async Task OnInitializedAsync()
     {
         client = HttpClientFactory.CreateClient("LogisticApi");
+        await LoadShippers();
         await LoadCargoData();
+    }
+
+    private async Task LoadShippers()
+    {
+      
+            if (client == null)
+            {
+                shippers = new List<ShipperModel>();
+                return;
+            }
+
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            var response = await client.GetAsync("Shipper/getallshippers");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ApiResponse<ShipperModel>>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                shippers = result?.Data ?? new List<ShipperModel>();
+            }
+            else
+            {
+                shippers = new List<ShipperModel>();
+            }
+     
     }
 
     private async Task LoadCargoData()
@@ -331,10 +393,9 @@
                         EstimatedTotalAmount = result.EstimatedTotalAmount,
                         AdvanceMoney = result.AdvanceMoney,
                         ShippingFee = result.ShippingFee,
-                        QuantityOfShipper = result.QuantityOfShipper
+                        IdShipper = result.IdShipper,
+                        StatusCargo = result.StatusCargo
                     };
-
-                    selectedCustomerPersonInCharge = result.CustomerPersonInCharge ?? "";
                 }
                 else
                 {
@@ -440,7 +501,6 @@
 
         cargoModel.CustomerCompanyName = customer.CustomerName;
         cargoModel.CustomerAddress = customer.Address;
-        selectedCustomerPersonInCharge = customer.PersonInCharge ?? "";
         cargoModel.CustomerPersonInCharge = customer.PersonInCharge ?? "";
 
         showCustomerDropdown = false;
@@ -483,16 +543,16 @@
                 cargoCode = cargoModel.CargoCode,
                 customerCompanyName = cargoModel.CustomerCompanyName,
                 employeeCreate = cargoModel.EmployeeCreate,
-                customerPersonInCharge = selectedCustomerPersonInCharge,
+                customerPersonInCharge = cargoModel.CustomerPersonInCharge,
                 customerAddress = cargoModel.CustomerAddress,
                 serviceType = serviceType,
                 exchangeDate = cargoModel.ExchangeDate,
                 licenseDate = cargoModel.LicenseDate,
-                nameOfLocation = cargoModel.NameOfLocation,
                 estimatedTotalAmount = cargoModel.EstimatedTotalAmount,
                 advanceMoney = cargoModel.AdvanceMoney,
                 shippingFee = cargoModel.ShippingFee,
-                quantityOfShipper = cargoModel.QuantityOfShipper
+                idShipper = cargoModel.IdShipper,
+                statusCargo = cargoModel.StatusCargo
             };
 
             var json = JsonSerializer.Serialize(requestData);
@@ -503,14 +563,13 @@
 
             if (response.IsSuccessStatusCode)
             {
+                // Tạo tracking mới
+                var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Cập nhật đơn hàng thành công với id: " + CargoId });
                 successMessage = "Cập nhật đơn hàng thành công! Đang chuyển hướng...";
                 StateHasChanged();
 
-
-
                 NavigationManager.NavigateTo("/cargo-list");
-
-
             }
             else
             {
@@ -550,5 +609,16 @@
     {
         successMessage = null;
         StateHasChanged();
+    }
+
+    private string GetLoaiXeName(byte? loaiXe)
+    {
+        return loaiXe switch
+        {
+            0 => "Xe tải nhỏ",
+            1 => "Xe tải trung",
+            2 => "Xe tải lớn",
+            _ => "Chưa xác định"
+        };
     }
 }

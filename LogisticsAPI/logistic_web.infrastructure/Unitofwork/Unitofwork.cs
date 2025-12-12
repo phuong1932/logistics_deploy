@@ -10,6 +10,8 @@ namespace logistic_web.infrastructure.Unitofwork
         IRoleRepository RoleRepository { get; }
         IUserRoleRepository UserRoleRepository { get; }
         ICustomerRepository CustomerRepository { get; }
+        IShipperRepository ShipperRepository { get; }
+        ITrackingRepository TrackingRepository { get; }
         
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();
@@ -25,6 +27,8 @@ namespace logistic_web.infrastructure.Unitofwork
         private IRoleRepository? _roleRepository;
         private IUserRoleRepository? _userRoleRepository;
         private ICustomerRepository? _customerRepository;
+        private IShipperRepository? _shipperRepository;
+        private ITrackingRepository? _trackingRepository;
 
         public UnitOfWork(LogisticContext context)
         {
@@ -45,6 +49,12 @@ namespace logistic_web.infrastructure.Unitofwork
 
         public ICustomerRepository CustomerRepository => 
             _customerRepository ??= new CustomerRepository(_context);
+
+        public IShipperRepository ShipperRepository => 
+            _shipperRepository ??= new ShipperRepository(_context);
+
+        public ITrackingRepository TrackingRepository => 
+            _trackingRepository ??= new TrackingRepository(_context);
     //2 phương thức sử dụng cho LinQ
     public Task<int> SaveChanges()
     {

@@ -1,6 +1,6 @@
 @page "/edit-customer/{id:int}"
 @layout DashBoardLayout
-@attribute [Authorize(Roles = "admin")]
+@attribute [Authorize(Roles = "admin,staff")]
 @inject IHttpClientFactory HttpClientFactory
 @inject IJSRuntime JSRuntime
 @inject ILocalStorageService LocalStorage
@@ -196,15 +196,11 @@
 
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync();
-                var customer = JsonSerializer.Deserialize<CustomerModel>(content, new JsonSerializerOptions
+                var customerresponse = await response.Content.ReadFromJsonAsync<HTTPResponseVM<CustomerModel>>();
+                JSRuntime.InvokeVoidAsync("console.log", customerresponse);
+                if (customerresponse != null)
                 {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (customer != null)
-                {
-                    customerModel = customer;
+                    customerModel = customerresponse.Data;
                 }
             }
             else
@@ -256,6 +252,9 @@
 
             if (response.IsSuccessStatusCode)
             {
+                   // Tạo tracking mới
+                var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Cập nhật khách hàng thành công với id: " + customerModel.CustomerId });
                 successMessage = "Cập nhật thành công! Đang chuyển hướng...";
                 StateHasChanged();
 

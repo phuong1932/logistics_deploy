@@ -1,12 +1,14 @@
 @page "/login"
 @using Blazored.LocalStorage
+@using logistic_web.application.Helpers
 @inject NavigationManager Navigation
 @inject IHttpClientFactory HttpClientFactory
 @inject ILocalStorageService LocalStorage
 @inject AuthenticationStateProvider AuthStateProvider
 @inject SweetAlertService Swal
+@inject JwtAuthService JwtService
 
-@code {
+@* @code {
    protected override async Task OnInitializedAsync()
     {
         // Kiểm tra nếu user đã đăng nhập (có token) thì redirect về dashboard
@@ -16,24 +18,25 @@
             Navigation.NavigateTo("/dashboard", true);
         }
     }
-}
+} *@
 
 <div class="login-bg">
-    <div class="login-form-container">
-        <img src="LOGO-Logistics.png" alt="Logistics Logo" />
-        <h2>Login</h2>
+    <div class="login-form-container" style="width: 420px; max-width: 95vw; padding: 2.5rem 3rem 3rem 3rem;">
+        <img src="LOGO-Logistics.png" alt="Logistics Logo" style="width:110px;display:block;margin:auto;margin-bottom:1rem;" />
+        <h2 style="text-align:center;margin-bottom:1.5rem;font-weight:600; font-size: 1.5rem;">ĐĂNG NHẬP</h2>
 
         <EditForm Model="@employee" OnValidSubmit="HandleValidSubmit">
             <DataAnnotationsValidator />
-            <ValidationSummary />
 
             <div class="mb-3">
-                <input class="form-control" @bind="employee.UsernameOrEmail" placeholder="Username" />
+                <input class="form-control" style="height: 45px; font-size: 1rem; padding: 0.75rem 1rem;" @bind="employee.UsernameOrEmail" placeholder="Username" />
+                <ValidationMessage For="@(() => employee.UsernameOrEmail)"/>
             </div>
             <div class="mb-3">
-                <input type="password" class="form-control" @bind="employee.Password" placeholder="Password" />
+                <input type="password" class="form-control" style="height: 45px; font-size: 1rem; padding: 0.75rem 1rem;" @bind="employee.Password" placeholder="Password" />
+                <ValidationMessage For="@(() => employee.Password)"/>
             </div>
-            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem;">Login</button>
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem;height:50px;font-size:1.05rem;font-weight:500; font-size: 1.2rem;">ĐĂNG NHẬP</button>
         </EditForm>
     </div>
 </div>
@@ -61,7 +64,8 @@
             // Lưu token vào localStorage
             await LocalStorage.SetItemAsync("token", result);
 
-
+            // Tạo tracking mới
+            await _httpClient.PostAsJsonAsync("tracking/create", new { Username = employee.UsernameOrEmail, Action = "Đăng nhập thành công với username: " + employee.UsernameOrEmail });
             // Hiển thị thông báo thành công với SweetAlert2
             await Swal.FireAsync(new SweetAlertOptions
             {
@@ -78,10 +82,12 @@
             {
                 customProvider.NotifyAuthStateChanged();
             }
-        
-            // Navigate sau khi toast đã hiển thị
-            Navigation.NavigateTo("/dashboard");    
+            
+           Navigation.NavigateTo(JwtService.GetHomePageByRole(result), true);
+
+            
         }
+        
         else
         {
             // Xem chi tiết lỗi

@@ -84,12 +84,11 @@
                                         @if (user.Roles != null && user.Roles.Any())
                                         {
                                             <div class="d-flex flex-wrap gap-2">
-                                                @foreach (var role in user.Roles)
-                                                {
-                                                    <span class="badge @GetRoleBadgeClass(role) fs-6">
-                                                        @role
+                                              
+                                                    <span class="badge  fs-6">
+                                                        @user.Roles
                                                     </span>
-                                                }
+                                                
                                             </div>
                                         }
                                         else

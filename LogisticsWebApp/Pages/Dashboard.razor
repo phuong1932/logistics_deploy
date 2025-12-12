@@ -1,6 +1,6 @@
 @page "/dashboard"
 @layout DashBoardLayout
-@attribute [Authorize(Roles = "admin,user,staff")]
+@attribute [Authorize(Roles = "admin,user,staff,shipper")]
 @inject IHttpClientFactory HttpClientFactory
 @using LogisticsWebApp.DTO
 

@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "fileType": "Cargo Information",
+    "version": "1.0",
+    "createdDate": "2025-12-06 20:56:41",
+    "description": "File này được tạo tự động khi thêm cargo mới"
+  },
+  "cargoInfo": {
+    "id": 1005,
+    "cargoCode": "CG20251206205641",
+    "customerCompanyName": "Công ty TNHH ABC",
+    "customerPersonInCharge": "Nguyễn Văn An",
+    "employeeCreate": "admin1",
+    "customerAddress": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "serviceType": {
+      "code": 0,
+      "name": "HẢI QUAN"
+    },
+    "dates": {
+      "licenseDate": "2025-12-06 20:56:41",
+      "exchangeDate": "2025-12-06",
+      "createdAt": "2025-12-06 20:56:41"
+    },
+    "financial": {
+      "estimatedTotalAmount": 12312312,
+      "advanceMoney": 312312312,
+      "shippingFee": 3123213213,
+      "estimatedTotalAmountFormatted": "12,312,312 VND",
+      "advanceMoneyFormatted": "312,312,312 VND",
+      "shippingFeeFormatted": "3,123,213,213 VND"
+    },
+    "logistics": {
+      "quantityOfShipper": 1
+    }
+  }
+}

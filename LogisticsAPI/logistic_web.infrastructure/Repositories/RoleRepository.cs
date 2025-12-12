@@ -8,6 +8,7 @@ namespace logistic_web.infrastructure.Repositories
         Task<Role?> GetByNameAsync(string roleName);
         Task<bool> ExistsByNameAsync(string roleName);
         Task<IEnumerable<Role>> GetRolesByUserIdAsync(int userId);
+        Task<string?> GetRoleNameByIdAsync(int roleId);
     }
 
     public class RoleRepository : Repository<Role>, IRoleRepository
@@ -35,5 +36,16 @@ namespace logistic_web.infrastructure.Repositories
                 .Where(r => r.UserRoles.Any(ur => ur.UserId == userId) && r.Deleted != true)
                 .ToListAsync();
         }
+
+        public async Task<string?> GetRoleNameByIdAsync(int roleId)
+        {
+            var rolename = await _context.Roles
+                .Where(r => r.Id == roleId && r.Deleted != true)
+                .Select(r => r.RoleName)
+                .FirstOrDefaultAsync();
+
+            return rolename;
+        }
+        
     }
 }

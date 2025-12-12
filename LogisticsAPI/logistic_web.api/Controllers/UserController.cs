@@ -68,7 +68,7 @@ namespace logistic_web.api.Controllers
         /// <summary>
         /// Đăng ký user mới
         /// </summary>
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserRegisterRequest model) 
         {
@@ -131,14 +131,14 @@ namespace logistic_web.api.Controllers
         /// <summary>
         /// Lấy danh sách tất cả users (chỉ admin)
         /// </summary>
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         [HttpGet("getallusers")]
         public async Task<IActionResult> GetAllUsers()
         {
             try
             {
                 var users = await _userService.GetAllUsersAsync();
-                return Ok(users);
+                return Ok( new { success = true, data = users, message = "Lấy danh sách user thành công" });
             }
             catch (Exception ex)
             {
@@ -148,9 +148,36 @@ namespace logistic_web.api.Controllers
         }
 
         /// <summary>
+        /// Lấy danh sách users dựa trên role của user hiện tại
+        /// Admin: lấy tất cả users
+        /// Staff: chỉ lấy users có role shipper
+        /// </summary>
+        [Authorize(Roles = "admin,staff")]
+        [HttpGet("getusersbycurrentrole")]
+        public async Task<IActionResult> GetUsersByCurrentRole([FromQuery] string role)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(role))
+                {
+                    return BadRequest(new { message = "Role không được để trống" });
+                }
+                
+                // Lấy users dựa trên role của user hiện tại
+                var users = await _userService.GetUsersByCurrentUserRoleAsync(role);
+                return Ok( new { success = true, data = users, message = "Lấy danh sách user thành công" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in get users by current role endpoint");
+                return StatusCode(500, new { message = "Lỗi server" });
+            }
+        }
+
+        /// <summary>
         /// Lấy thông tin user theo ID (chỉ admin)
         /// </summary>
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         [HttpGet("getuserbyid/{id}")]
         public async Task<IActionResult> GetUserById(int id)
         {
@@ -162,7 +189,7 @@ namespace logistic_web.api.Controllers
                     return NotFound(new { message = "Không tìm thấy user" });
                 }
 
-                return Ok(user);
+                return Ok( new { success = true, data = user, message = "Lấy thông tin user thành công" });
             }
             catch (Exception ex)
             {
@@ -174,7 +201,7 @@ namespace logistic_web.api.Controllers
         /// <summary>
         /// Cập nhật user (chỉ admin)
         /// </summary>
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         [HttpPut("updateuser/{id}")]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UserUpdateRequest model)
         {
@@ -227,7 +254,7 @@ namespace logistic_web.api.Controllers
         /// <summary>
         /// Gán role cho user (chỉ admin)
         /// </summary>
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         [HttpPost("assignrole")]
         public async Task<IActionResult> AssignRole([FromBody] AssignRoleRequest model)
         {
@@ -256,7 +283,7 @@ namespace logistic_web.api.Controllers
         /// <summary>
         /// Xóa role khỏi user (chỉ admin)
         /// </summary>
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         [HttpDelete("removerole")]
         public async Task<IActionResult> RemoveRole([FromBody] AssignRoleRequest model)
         {

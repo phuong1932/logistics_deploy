@@ -4,10 +4,10 @@ namespace LogisticsWebApp.DTO
 {
     public class UserLoginVM
     {
-        [Required(ErrorMessage = "Username is required")]
+        [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập hoặc email")]
         public string UsernameOrEmail { get; set; } = string.Empty;
         
-        [Required(ErrorMessage = "Password is required")]
+        [Required(ErrorMessage = "Vui lòng nhập mật khẩu")]
         public string Password { get; set; } = string.Empty;
     }
 }

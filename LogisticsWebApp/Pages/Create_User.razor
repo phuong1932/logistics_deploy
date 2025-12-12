@@ -1,6 +1,6 @@
 @page "/create-user"
 @layout DashBoardLayout
-@attribute [Authorize(Roles = "admin")]
+@attribute [Authorize(Roles = "admin,staff")]
 @inject IHttpClientFactory HttpClientFactory
 @inject IJSRuntime JSRuntime
 @inject ILocalStorageService LocalStorage
@@ -12,7 +12,7 @@
 @using Blazored.LocalStorage
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager NavigationManager
-
+@inject JwtAuthService JwtAuthService
 <div class="container-fluid p-4">
     <div class="row justify-content-center">
         <div class="col-lg-8">
@@ -36,9 +36,8 @@
                                 <label class="form-label fw-bold">
                                     Tên đăng nhập <span class="text-danger">*</span>
                                 </label>
-                                <InputText @bind-Value="userModel.Username" 
-                                           class="form-control" 
-                                           placeholder="Nhập tên đăng nhập" />
+                                <InputText @bind-Value="userModel.Username" class="form-control"
+                                    placeholder="Nhập tên đăng nhập" />
                                 <ValidationMessage For="@(() => userModel.Username)" class="text-danger mt-2" />
                             </div>
 
@@ -47,10 +46,8 @@
                                 <label class="form-label fw-bold">
                                     Email <span class="text-danger">*</span>
                                 </label>
-                                <InputText @bind-Value="userModel.Email" 
-                                           type="email"
-                                           class="form-control" 
-                                           placeholder="Nhập email" />
+                                <InputText @bind-Value="userModel.Email" type="email" class="form-control"
+                                    placeholder="Nhập email" />
                                 <ValidationMessage For="@(() => userModel.Email)" class="text-danger mt-2" />
                             </div>
 
@@ -59,9 +56,8 @@
                                 <label class="form-label fw-bold">
                                     Họ và tên <span class="text-danger">*</span>
                                 </label>
-                                <InputText @bind-Value="userModel.FullName" 
-                                           class="form-control" 
-                                           placeholder="Nhập họ và tên đầy đủ" />
+                                <InputText @bind-Value="userModel.FullName" class="form-control"
+                                    placeholder="Nhập họ và tên đầy đủ" />
                                 <ValidationMessage For="@(() => userModel.FullName)" class="text-danger mt-2" />
                             </div>
 
@@ -71,13 +67,11 @@
                                     Mật khẩu <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
-                                    <InputText @bind-Value="userModel.Password" 
-                                               type="@(showPassword ? "text" : "password")"
-                                               class="form-control" 
-                                               placeholder="Nhập mật khẩu" />
-                                    <button class="btn btn-outline-secondary" 
-                                            type="button" 
-                                            @onclick="TogglePasswordVisibility">
+                                    <InputText @bind-Value="userModel.Password"
+                                        type="@(showPassword ? "text" : "password")" class="form-control"
+                                        placeholder="Nhập mật khẩu" />
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        @onclick="TogglePasswordVisibility">
                                         <i class="fas @(showPassword ? "fa-eye-slash" : "fa-eye")"></i>
                                     </button>
                                 </div>
@@ -90,13 +84,11 @@
                                     Xác nhận mật khẩu <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
-                                    <InputText @bind-Value="userModel.ConfirmPassword" 
-                                               type="@(showConfirmPassword ? "text" : "password")"
-                                               class="form-control" 
-                                               placeholder="Nhập lại mật khẩu" />
-                                    <button class="btn btn-outline-secondary" 
-                                            type="button" 
-                                            @onclick="ToggleConfirmPasswordVisibility">
+                                    <InputText @bind-Value="userModel.ConfirmPassword"
+                                        type="@(showConfirmPassword ? "text" : "password")" class="form-control"
+                                        placeholder="Nhập lại mật khẩu" />
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        @onclick="ToggleConfirmPasswordVisibility">
                                         <i class="fas @(showConfirmPassword ? "fa-eye-slash" : "fa-eye")"></i>
                                     </button>
                                 </div>
@@ -109,16 +101,38 @@
                                     Vai trò <span class="text-danger">*</span>
                                 </label>
                                 <div class="alert alert-info mb-2">
-                                    <i class="fas fa-info-circle"></i> 
-                                    <strong>Mặc định:</strong> Người dùng mới sẽ được gán vai trò <span class="badge bg-primary">User</span>
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Mặc định:</strong> Người dùng mới sẽ được gán vai trò <span
+                                        class="badge bg-primary">User</span>
                                 </div>
-                                <select @bind="userModel.RoleId" class="form-select" disabled>
-                                    <option value="0">User (Mặc định)</option>
+                                <select @bind="userModel.RoleId" class="form-select">
+                                    <option value="0" Selected>User (Mặc định)</option>
+                                    <option value="1002">shipper</option>
                                 </select>
                                 <small class="text-muted">
                                     Bạn có thể thay đổi vai trò sau khi tạo tài khoản trong phần "Quản lý vai trò"
                                 </small>
                             </div>
+
+                            @if (userModel.RoleId == 1002)
+                            {
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label mt-2 fw-bold">
+                                        Chọn shipper liên kết <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" @bind="userModel.ShipperId">
+                                        <option value="0">-- Chọn shipper --</option>
+                                        @if (listShippers != null && listShippers.Any())
+                                        {
+                                            @foreach (var shipper in listShippers)
+                                            {
+                                                <option value="@shipper.Id">@shipper.TenTaiXe - @shipper.SoDienThoai</option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="text-muted">Bắt buộc chọn shipper khi vai trò là Shipper</small>
+                                </div>
+                            }
                         </div>
 
                         <!-- Thông báo lỗi -->
@@ -147,7 +161,8 @@
                             <button type="submit" class="btn btn-success" disabled="@isSubmitting">
                                 @if (isSubmitting)
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"
+                                        aria-hidden="true"></span>
                                     <span>Đang tạo...</span>
                                 }
                                 else
@@ -172,7 +187,8 @@
                     <ul class="mb-0">
                         <li>Tên đăng nhập phải có ít nhất 3 ký tự và không được trùng với tài khoản đã có</li>
                         <li>Email phải hợp lệ và chưa được sử dụng</li>
-                        <li>Mật khẩu phải có ít nhất 6 ký tự và nên kết hợp chữ hoa, chữ thường, số và ký tự đặc biệt</li>
+                        <li>Mật khẩu phải có ít nhất 6 ký tự và nên kết hợp chữ hoa, chữ thường, số và ký tự đặc biệt
+                        </li>
                         <li>Tất cả người dùng mới sẽ được tự động gán vai trò <strong>User</strong></li>
                         <li>Bạn có thể thêm hoặc thay đổi vai trò cho người dùng sau khi tạo tài khoản</li>
                     </ul>
@@ -184,11 +200,49 @@
 
 @code {
     private UserRegisterModel userModel = new UserRegisterModel();
+    private List<RoleModel> availableRoles = new List<RoleModel>();
+    private string? currentUserRole = null;
     private bool isSubmitting = false;
     private bool showPassword = false;
     private bool showConfirmPassword = false;
     private string? errorMessage;
     private string? successMessage;
+
+    private List<ShipperModel> listShippers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+            // Lấy role của user hiện tại
+        var token = await LocalStorage.GetItemAsync<string>("token");
+        if (!string.IsNullOrEmpty(token))
+        {
+           
+                currentUserRole = JwtAuthService.GetRoleFromToken(token);
+          
+        }
+        await LoadShippers();
+        await LoadAvailableRoles();
+
+    }
+
+    private async Task LoadShippers()
+    {
+
+        var client = HttpClientFactory.CreateClient("LogisticApi");
+        var token = await LocalStorage.GetItemAsync<string>("token");
+        if (!string.IsNullOrEmpty(token))
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+        var response = await client.GetAsync("Shipper/getallshippers");
+        if (response.IsSuccessStatusCode)
+        {
+            var apiResult = await response.Content.ReadFromJsonAsync<HTTPResponseVM<List<ShipperModel>>>();
+
+            listShippers = apiResult.Data.ToList();
+
+        }
+    }
 
     private void TogglePasswordVisibility()
     {
@@ -219,17 +273,16 @@
             successMessage = null;
             StateHasChanged();
 
-            // Tạo request body
-            var registerRequest = new
+            // Validate: Nếu chọn role shipper thì phải chọn shipper
+            if (userModel.RoleId == 1002 && (userModel.ShipperId == null || userModel.ShipperId == 0))
             {
-                username = userModel.Username,
-                email = userModel.Email,
-                password = userModel.Password,
-                fullName = userModel.FullName,
-                roleId = userModel.RoleId
-            };
+                errorMessage = "Vui lòng chọn shipper liên kết khi chọn vai trò Shipper";
+                isSubmitting = false;
+                StateHasChanged();
+                return;
+            }
 
-            var json = JsonSerializer.Serialize(registerRequest);
+            var json = JsonSerializer.Serialize(userModel);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var client = HttpClientFactory.CreateClient("LogisticApi");
@@ -243,9 +296,12 @@
 
             if (response.IsSuccessStatusCode)
             {
+                // Tạo tracking mới
+                var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Tạo người dùng thành công: " + userModel.Username });
                 successMessage = "Tạo tài khoản thành công! Đang chuyển hướng...";
                 StateHasChanged();
-                
+
                 await Task.Delay(1500);
                 NavigationManager.NavigateTo("/user-list");
             }
@@ -280,7 +336,54 @@
             StateHasChanged();
         }
     }
+     private async Task LoadAvailableRoles()
+    {
+       
 
+            // Load all roles
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            var rolesResponse = await client.GetAsync("Role");
+            if (rolesResponse.IsSuccessStatusCode)
+            {
+                var roles = await rolesResponse.Content.ReadFromJsonAsync<HTTPResponseVM<List<RoleModel>>>();
+
+                if (roles != null)
+                {
+                    availableRoles = roles.Data.ToList();
+                }
+            }
+
+    
+    }
+    private List<RoleModel> GetFilteredRoles()
+    {
+        if (string.IsNullOrEmpty(currentUserRole))
+        {
+            return availableRoles;
+        }
+
+        var roleLower = currentUserRole.ToLower();
+        
+        // Nếu là admin: hiển thị tất cả roles
+        if (roleLower == "admin")
+        {
+            return availableRoles;
+        }
+        
+        // Nếu là staff: chỉ hiển thị role shipper
+        if (roleLower == "staff")
+        {
+            return availableRoles.Where(r => r.RoleName.ToLower() == "shipper").ToList();
+        }
+
+        // Mặc định: trả về tất cả
+        return availableRoles;
+    }
     private void ResetForm()
     {
         userModel = new UserRegisterModel();
@@ -296,4 +399,3 @@
         NavigationManager.NavigateTo("/user-list");
     }
 }
-

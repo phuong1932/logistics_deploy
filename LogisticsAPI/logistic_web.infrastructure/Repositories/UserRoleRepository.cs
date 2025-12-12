@@ -5,7 +5,7 @@ namespace logistic_web.infrastructure.Repositories
 {
     public interface IUserRoleRepository : IRepository<UserRole>
     {
-        Task<IEnumerable<UserRole>> GetByUserIdAsync(int userId);
+        Task<int?> GetByUserIdAsync(int userId);
         Task<IEnumerable<UserRole>> GetByRoleIdAsync(int roleId);
         Task<UserRole?> GetByUserAndRoleAsync(int userId, int roleId);
         Task<bool> ExistsAsync(int userId, int roleId);
@@ -13,6 +13,8 @@ namespace logistic_web.infrastructure.Repositories
         Task<bool> RemoveRoleFromUserAsync(int userId, int roleId);
         Task<IEnumerable<User>> GetUsersByRoleAsync(int roleId);
         Task<IEnumerable<Role>> GetRolesByUserAsync(int userId);
+        Task<int?> GetShipperIdByUserIdAsync(int userId);
+        Task<UserRole?> GetByUserId(int userId);
     }
 
     public class UserRoleRepository : Repository<UserRole>, IUserRoleRepository
@@ -21,13 +23,33 @@ namespace logistic_web.infrastructure.Repositories
         {
         }
 
-        public async Task<IEnumerable<UserRole>> GetByUserIdAsync(int userId)
+        // Lấy shipperId từ userId (giả sử bảng User và User có trường ShipperId)
+        // Lấy shipperId của user dựa vào userId thông qua liên kết UserRole (chỉ khi Role là Shipper, vd RoleId = 1002)
+        public async Task<int?> GetShipperIdByUserIdAsync(int userId)
         {
-            return await _context.UserRoles
+            // Tìm userrole của user với role là shipper (1002)
+            var userRoleWithShipper = await _context.UserRoles
+                .Where(ur => ur.UserId == userId && ur.RoleId == 1002)
+                .FirstOrDefaultAsync();
+
+            // Không tìm thấy thì trả về null
+            if (userRoleWithShipper == null)
+                return null;
+
+
+            return userRoleWithShipper.ShipperId;
+        }
+
+        public async Task<int?> GetByUserIdAsync(int userId)
+        {
+            var roleId = await _context.UserRoles
                 .Include(ur => ur.User)
                 .Include(ur => ur.Role)
                 .Where(ur => ur.UserId == userId)
-                .ToListAsync();
+                .Select(ur => ur.RoleId)
+                .FirstOrDefaultAsync();
+
+            return roleId;
         }
 
         public async Task<IEnumerable<UserRole>> GetByRoleIdAsync(int roleId)
@@ -46,7 +68,13 @@ namespace logistic_web.infrastructure.Repositories
                 .Include(ur => ur.Role)
                 .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
         }
-
+     public async Task<UserRole?> GetByUserId(int userId)
+        {
+            return await _context.UserRoles
+                .Include(ur => ur.User)
+                .Include(ur => ur.Role)
+                .FirstOrDefaultAsync(ur => ur.UserId == userId);
+        }
         public async Task<bool> ExistsAsync(int userId, int roleId)
         {
             return await _context.UserRoles
@@ -96,5 +124,7 @@ namespace logistic_web.infrastructure.Repositories
                 .Select(ur => ur.Role)
                 .ToListAsync();
         }
+
+
     }
 }

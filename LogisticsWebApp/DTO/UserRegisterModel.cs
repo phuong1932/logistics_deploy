@@ -26,6 +26,7 @@ namespace LogisticsWebApp.DTO
         public string FullName { get; set; } = string.Empty;
 
         public int RoleId { get; set; } = 0; // 0 = role mặc định, backend sẽ tự động gán role "user"
+        public int? ShipperId { get; set; } = null;
     }
 
     public class RegisterResponse

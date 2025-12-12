@@ -1,6 +1,6 @@
 @page "/export-excel"
 @layout DashBoardLayout
-@attribute [Authorize(Roles = "admin,user,staff")]
+@attribute [Authorize(Roles = "admin")]
 @inject IHttpClientFactory HttpClientFactory
 @inject IJSRuntime JSRuntime
 @using System.Text.Json
@@ -252,6 +252,9 @@
 
             if (response.IsSuccessStatusCode)
             {
+                // Tạo tracking mới
+                var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Xuất dữ liệu Excel thành công với ngày: " + dateBegin.Value.ToString("dd/MM/yyyy") + " đến " + dateEnd.Value.ToString("dd/MM/yyyy") });
                 var content = await response.Content.ReadAsByteArrayAsync();
                 var fileName = includeAllData 
                     ? $"BaoCaoLogistics_All_{DateTime.Now:ddMMyyyy_HHmm}.xlsx"

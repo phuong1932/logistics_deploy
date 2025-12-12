@@ -1,6 +1,6 @@
 @page "/user-list"
 @layout DashBoardLayout
-@attribute [Authorize(Roles = "admin")]
+@attribute [Authorize(Roles = "admin,staff")]
 @inject IHttpClientFactory HttpClientFactory
 @inject IJSRuntime JSRuntime
 @inject ILocalStorageService LocalStorage
@@ -9,8 +9,9 @@
 @using Microsoft.AspNetCore.Authorization
 @using LogisticsWebApp.DTO
 @using Blazored.LocalStorage
+@using logistic_web.application.Helpers
 @inject NavigationManager NavigationManager
-
+@inject JwtAuthService JwtAuthService
 <div class="container-fluid p-4">
     <div class="card shadow">
         <div class="card-header bg-primary text-white">
@@ -30,11 +31,14 @@
                         <input type="text" class="form-control" @bind="searchKeyword"
                             placeholder="Nhập tên đăng nhập, email hoặc họ tên..." />
                     </div>
-                    <div class="d-flex flex-column justify-content-end" style="width: 48px;">
+                    <AuthorizeView Roles="admin" Context="adminContext">
+                           <div class="d-flex flex-column justify-content-end" style="width: 48px;">
                         <button class="btn btn-primary w-100" style="height:38px; padding:0;" @onclick="SearchUser">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
+                    </AuthorizeView>
+
                     <div class="d-flex flex-column justify-content-end" style="width: 48px;">
                         <button class="btn btn-danger w-100" style="height:38px; padding:0;" @onclick="ResetFilter">
                             <i class="fas fa-times-circle"></i>
@@ -59,9 +63,7 @@
                     <table class="table table-bordered table-hover">
                         <thead class="table-primary">
                             <tr>
-                                <th class="text-center" style="width: 50px;">
-                                    <input type="checkbox" @onchange="SelectAllUsers" />
-                                </th>
+                             
                                 <th class="text-center" style="width: 60px;">STT</th>
                                 <th class="text-center" style="width: 120px;">Chức năng</th>
                                 <th class="text-center">Email</th>
@@ -78,9 +80,7 @@
                                     var index = (paginationService.CurrentPage - 1) * paginationService.PageSize + i + 1;
 
                                     <tr>
-                                        <td class="text-center">
-                                            <input type="checkbox" @bind="user.IsSelected" />
-                                        </td>
+                                    
                                         <td class="text-center">@index</td>
                                         <td class="text-center">
                                             <div class="btn-group btn-group-sm">
@@ -88,6 +88,9 @@
                                                 <button class="btn btn-warning me-1" @onclick="() => EditUser(user.Id)"
                                                     title="Sửa">
                                                     <i class="fas fa-pen"></i>
+                                                </button>
+                                                <button class="btn btn-info me-1" @onclick="() => ViewTracking(user.Id)" title="Xem tracking">
+                                                    <i class="fas fa-history"></i>
                                                 </button>
                                                 <button class="btn btn-danger" @onclick="() => DeleteUser(user.Id)" title="Xóa">
                                                     <i class="fas fa-trash"></i>
@@ -99,10 +102,7 @@
                                         <td>
                                             @if (user.Roles != null && user.Roles.Any())
                                             {
-                                                @foreach (var role in user.Roles)
-                                                {
-                                                    <span class="badge @GetRoleBadgeClass(role) me-1">@role</span>
-                                                }
+                                                <span class="badge me-1 @GetRoleBadgeClass(user.Roles)">@user.Roles</span>
                                             }
                                             else
                                             {
@@ -194,34 +194,35 @@
 
             var client = HttpClientFactory.CreateClient("LogisticApi");
             var token = await LocalStorage.GetItemAsync<string>("token");
+            
             if (!string.IsNullOrEmpty(token))
             {
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            }
-            var response = await client.GetAsync("User/getallusers");
-
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var users = JsonSerializer.Deserialize<List<UserModel>>(content, new JsonSerializerOptions
+                var currentUserRole = JwtAuthService.GetRoleFromToken(token);
+                var response = await client.GetAsync($"User/getusersbycurrentrole?role={currentUserRole}");
+                
+                if (response.IsSuccessStatusCode)
                 {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (users != null)
+                    var apiResult = await response.Content.ReadFromJsonAsync<HTTPResponseVM<List<UserModel>>>();
+                    if (apiResult != null && apiResult.Data != null)
+                    {
+                        allUsers = apiResult.Data;
+                        paginationService.SetData(allUsers);
+                    }
+                }
+                else
                 {
-                    allUsers = users;
-                    paginationService.SetData(allUsers);
+                    await JSRuntime.InvokeVoidAsync("console.log", "Không thể tải danh sách người dùng");
                 }
             }
             else
             {
-                await JSRuntime.InvokeVoidAsync("alert", "Không thể tải danh sách người dùng");
+                await JSRuntime.InvokeVoidAsync("console.log", "Token không tồn tại");
             }
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Lỗi khi tải dữ liệu: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("console.log", $"Lỗi khi tải dữ liệu: {ex.Message}");
         }
         finally
         {
@@ -288,15 +289,7 @@
         StateHasChanged();
     }
 
-    // Actions
-    private void SelectAllUsers(ChangeEventArgs e)
-    {
-        var isChecked = e.Value != null && (bool)e.Value;
-        foreach (var user in paginationService.PaginatedItems)
-        {
-            user.IsSelected = isChecked;
-        }
-    }
+
 
     private void CreateUser()
     {
@@ -313,13 +306,18 @@
         NavigationManager.NavigateTo($"/edit-user/{id}");
     }
 
+    private void ViewTracking(int userId)
+    {
+        NavigationManager.NavigateTo($"/tracking-list/{userId}");
+    }
+
     private async Task DeleteUser(int id)
     {
         // Dùng sweetalert2 để xác nhận thay vì confirm truyền thống
         var result = await Swal.FireAsync(new SweetAlertOptions
         {
             Title = "Xác nhận xóa",
-            Text = $"Bạn có chắc muốn xóa người dùng ID: {id}?",
+            Text = $"Bạn có chắc muốn xóa người dùng?",
             Icon = SweetAlertIcon.Warning,
             ShowCancelButton = true,
             ConfirmButtonText = "Xóa",
@@ -337,10 +335,14 @@
                 {
                     client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                 }
-                var response = await client.DeleteAsync($"User/{id}");
+                var response = await client.DeleteAsync($"User/deleteuser/{id}");
 
                 if (response.IsSuccessStatusCode)
                 {
+                    // Tạo tracking mới
+                    var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                    await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Xóa người dùng thành công với id: " + id });
+
                     await Swal.FireAsync(new SweetAlertOptions
                     {
                         Icon = SweetAlertIcon.Success,

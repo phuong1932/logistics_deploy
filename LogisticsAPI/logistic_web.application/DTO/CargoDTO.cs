@@ -58,8 +58,14 @@ namespace logistic_web.application.DTO
         public decimal? ShippingFee { get; set; }
 
         /// <summary>
-        /// Số lượng shipper tham gia giao lô hàng này
+        /// ID Shipper (khóa ngoại tới bảng Shipper)
         /// </summary>
-        public int QuantityOfShipper { get; set; }
+        public int IdShipper { get; set; }
+
+        /// <summary>
+        /// Trạng thái đơn hàng (1: Hoạt động, 2: Vô hiệu, 3: Chờ shipper nhận, 4: Đang vận chuyển, 5: Hoàn thành)
+        /// </summary>
+        public byte? StatusCargo { get; set; }
     }
 }
+

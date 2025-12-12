@@ -1030,3 +1030,11 @@ C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\log
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\rjimswa.dswa.cache.json
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\bin\Debug\net9.0\logistic_web.api.staticwebassets.runtime.json
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\compressed\yrwqr65oje-lbg5h5djie.gz
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\compressed\x8eoof75jd-ogj3afo3gk.gz
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\compressed\tjakxtfcd6-5rh0a8fl5o.gz
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\compressed\uixerqwteq-l1fxnvwoze.gz
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\compressed\7nwp0g6y07-81dro35eku.gz
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\compressed\1ulehv76wt-gcfg9wdqry.gz
+C:\Users\MMTOS\Desktop\net\du-an-tot-nghiep-deploy\logistic-web\LogisticsAPI\logistic_web.api\obj\Debug\net9.0\compressed\iy61aa7jf8-smvf2vunpi.gz

@@ -29,9 +29,13 @@ public partial class Cargolist
 
     public decimal? ShippingFee { get; set; }
 
-    public int QuantityOfShipper { get; set; }
+    public int IdShipper { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
+    public byte? StatusCargo { get; set; }
+
     public string? FilePathJson { get; set; }
+
+    public virtual Shipper IdShipperNavigation { get; set; } = null!;
 }

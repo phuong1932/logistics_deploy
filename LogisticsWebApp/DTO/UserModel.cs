@@ -7,15 +7,10 @@ namespace LogisticsWebApp.DTO
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
-        public List<string> Roles { get; set; } = new List<string>();
-        public bool IsSelected { get; set; }
+
+        public string Roles { get; set; } = string.Empty;
     }
 
-    public class UserApiResponse
-    {
-        public bool Success { get; set; }
-        public List<UserModel> Data { get; set; } = new List<UserModel>();
-        public string? Message { get; set; }
-    }
+
 }
 

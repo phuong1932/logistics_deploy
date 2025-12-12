@@ -23,6 +23,9 @@ builder.Services.AddHttpClient("LogisticApi", client =>
     client.BaseAddress = new Uri($"{apiBaseUrl}/api/");
 });
 
+
+
+
 builder.Services.AddBlazoredLocalStorage(); //lưu trữ local
 builder.Services.AddSweetAlert2(); // SweetAlert2 service
 

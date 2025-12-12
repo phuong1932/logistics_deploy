@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "fileType": "Cargo Information",
+    "version": "1.0",
+    "createdDate": "2025-12-08 23:26:39",
+    "description": "File này được tạo tự động khi thêm cargo mới"
+  },
+  "cargoInfo": {
+    "id": 1003,
+    "cargoCode": "CG20251208232615",
+    "customerCompanyName": "Công ty TNHH ABCDEF",
+    "customerPersonInCharge": "Nguyễn Văn An",
+    "employeeCreate": "admin1",
+    "customerAddress": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "serviceType": {
+      "code": 1,
+      "name": "VẬN CHUYỂN"
+    },
+    "dates": {
+      "licenseDate": "2025-12-08 23:26:15",
+      "exchangeDate": "2025-12-08",
+      "createdAt": "2025-12-08 23:26:15"
+    },
+    "financial": {
+      "estimatedTotalAmount": 1000022,
+      "advanceMoney": 10000,
+      "shippingFee": 10000,
+      "estimatedTotalAmountFormatted": "1,000,022 VND",
+      "advanceMoneyFormatted": "10,000 VND",
+      "shippingFeeFormatted": "10,000 VND"
+    },
+    "logistics": {
+      "idShipper": 1,
+      "statusCargo": 1
+    }
+  }
+}

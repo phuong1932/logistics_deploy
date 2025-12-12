@@ -14,6 +14,7 @@ namespace logistic_web.application.Services
         Task<bool> DeleteUserAsync(int userId);
         Task<UserResponse> GetUserByIdAsync(int userId);
         Task<IEnumerable<UserResponse>> GetAllUsersAsync();
+        Task<IEnumerable<UserResponse>> GetUsersByCurrentUserRoleAsync(string role);
         Task<bool> AssignRoleToUserAsync(int userId, int roleId);
         Task<bool> RemoveRoleFromUserAsync(int userId, int roleId);
     }
@@ -101,6 +102,7 @@ namespace logistic_web.application.Services
                         {
                             UserId = user.Id,
                             RoleId = userRole.Id,
+                            ShipperId = model.ShipperId,
                             Description = user.Id.ToString()
                         };
                         await _unitOfWork.UserRoleRepository.AddAsync(userRoleEntity);
@@ -112,6 +114,7 @@ namespace logistic_web.application.Services
                     {
                         UserId = user.Id,
                         RoleId = model.RoleId,
+                        ShipperId = model.ShipperId,
                         Description = user.Id.ToString()
                     };
                     await _unitOfWork.UserRoleRepository.AddAsync(userRoleEntity);
@@ -170,8 +173,16 @@ namespace logistic_web.application.Services
                     return false;
                 }
 
-                user.Deleted = true;
-                _unitOfWork.UserRepository.Update(user);
+                // Xóa tất cả các bản ghi UserRole liên quan đến user này trước
+                var userRoles = await _unitOfWork.UserRoleRepository.GetByUserId(userId);
+                
+                if (userRoles != null)
+                {
+                    _unitOfWork.UserRoleRepository.Remove(userRoles);
+                }
+                
+                // Sau đó xóa user
+                _unitOfWork.UserRepository.Remove(user);
                 await _unitOfWork.SaveChangesAsync();
                 
                 _logger.LogInformation("User deleted successfully: {UserId}", userId);
@@ -195,7 +206,6 @@ namespace logistic_web.application.Services
                 }
 
                 var userRoles = await _unitOfWork.UserRoleRepository.GetByUserIdAsync(userId);
-                var roleNames = userRoles.Select(ur => ur.Role.RoleName).ToList();
 
                 return new UserResponse
                 {
@@ -204,7 +214,6 @@ namespace logistic_web.application.Services
                     Email = user.Email,
                     FullName = user.FullName,
                     CreatedAt = user.CreatedAt ?? DateTime.Now,
-                    Roles = roleNames
                 };
             }
             catch (Exception ex)
@@ -224,7 +233,7 @@ namespace logistic_web.application.Services
                 foreach (var user in users.Where(u => u.Deleted != true))
                 {
                     var userRoles = await _unitOfWork.UserRoleRepository.GetByUserIdAsync(user.Id);
-                    var roleNames = userRoles.Select(ur => ur.Role.RoleName).ToList();
+                    var roleNames =  await _unitOfWork.RoleRepository.GetRoleNameByIdAsync(userRoles.Value);
 
                     userResponses.Add(new UserResponse
                     {
@@ -246,6 +255,65 @@ namespace logistic_web.application.Services
             }
         }
 
+        public async Task<IEnumerable<UserResponse>> GetUsersByCurrentUserRoleAsync(string role)
+        {
+            try
+            {
+                List<User> filteredUsers = new List<User>();
+                var roleLower = role?.ToLower() ?? "";
+
+                // Nếu user hiện tại là admin: lấy tất cả users
+                if (roleLower == "admin")
+                {
+                    var allUsers = await _unitOfWork.UserRepository.GetAllAsync();
+                    filteredUsers = allUsers.Where(u => u.Deleted != true).ToList();
+                }
+                // Nếu user hiện tại là staff: chỉ lấy users có role shipper
+                else if (roleLower == "staff")
+                {
+                    // Tìm role "shipper" trong database
+                    var shipperRole = await _unitOfWork.RoleRepository.GetByNameAsync("shipper");
+                    if (shipperRole != null)
+                    {
+                        // Lấy tất cả users có role shipper từ bảng UserRole
+                        var shipperUsers = await _unitOfWork.UserRoleRepository.GetUsersByRoleAsync(shipperRole.Id);
+                        filteredUsers = shipperUsers.Where(u => u.Deleted != true).ToList();
+                    }
+                }
+                else
+                {
+                    // Mặc định: trả về danh sách rỗng
+                    return new List<UserResponse>();
+                }
+
+                // Chuyển đổi sang UserResponse
+                var userResponses = new List<UserResponse>();
+                foreach (var user in filteredUsers)
+                {
+                    // Lấy tất cả roles của user
+                    var userRolesList = await _unitOfWork.RoleRepository.GetRolesByUserIdAsync(user.Id);
+                    var roleNames = string.Join(", ", userRolesList.Select(r => r.RoleName));
+
+                    userResponses.Add(new UserResponse
+                    {
+                        Id = user.Id,
+                        Username = user.Username,
+                        Email = user.Email,
+                        FullName = user.FullName,
+                        CreatedAt = user.CreatedAt ?? DateTime.Now,
+                        Roles = roleNames
+                    });
+                }
+
+                return userResponses;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting users by current user role");
+                return new List<UserResponse>();
+            }
+        }
+
         public async Task<bool> AssignRoleToUserAsync(int userId, int roleId)
         {
             try
@@ -259,12 +327,12 @@ namespace logistic_web.application.Services
                     return false;
                 }
 
-                var existingUserRole = await _unitOfWork.UserRoleRepository.GetByUserIdAsync(userId);
-                if (existingUserRole.Any(ur => ur.RoleId == roleId))
-                {
-                    _logger.LogWarning("User already has this role: UserId={UserId}, RoleId={RoleId}", userId, roleId);
-                    return false;
-                }
+                // var existingUserRole = await _unitOfWork.UserRoleRepository.GetByUserIdAsync(userId);
+                // if (existingUserRole.Any(ur => ur.RoleId == roleId))
+                // {
+                //     _logger.LogWarning("User already has this role: UserId={UserId}, RoleId={RoleId}", userId, roleId);
+                //     return false;
+                // }
 
                 var userRole = new UserRole
                 {
@@ -291,9 +359,8 @@ namespace logistic_web.application.Services
             try
             {
                 var userRoles = await _unitOfWork.UserRoleRepository.GetByUserIdAsync(userId);
-                var userRole = userRoles.FirstOrDefault(ur => ur.RoleId == roleId);
 
-                if (userRole == null)
+                if (userRoles == null)
                 {
                     _logger.LogWarning("User role not found: UserId={UserId}, RoleId={RoleId}", userId, roleId);
                     return false;

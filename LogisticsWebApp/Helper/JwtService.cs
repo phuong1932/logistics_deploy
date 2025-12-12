@@ -11,7 +11,6 @@ namespace logistic_web.application.Helpers
         private readonly string? _issuer;
         private readonly string? _audience;
         private readonly int _expiryInDays;
-        
         private readonly ILogger<JwtAuthService> _logger;
 
         public JwtAuthService(IConfiguration configuration, ILogger<JwtAuthService> logger)
@@ -20,11 +19,11 @@ namespace logistic_web.application.Helpers
             _issuer = configuration["Jwt:Issuer"];
             _audience = configuration["Jwt:Audience"];
             int.TryParse(configuration["Jwt:ExpiryInDays"], out _expiryInDays);
-          
+
             _logger = logger;
         }
 
-  
+
         public string DecodePayloadToken(string token)
         {
             try
@@ -76,7 +75,19 @@ namespace logistic_web.application.Helpers
                 throw new InvalidOperationException($"Lỗi khi lấy UserId từ token: {ex.Message}", ex);
             }
         }
+        public string GetRoleFromToken(string token)
+        {
+                var handler = new JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+    
+                var roleClaim = jwtToken.Claims.FirstOrDefault(x => x.Type == "role");  
+                if (roleClaim == null)
+                {
+                    throw new InvalidOperationException("Không tìm thấy Role trong payload");
+                }
 
+                return roleClaim.Value;
+        }
         public List<string> GetUserRolesFromToken(string token)
         {
             try
@@ -96,6 +107,28 @@ namespace logistic_web.application.Helpers
             {
                 _logger.LogError(ex, "Error getting user roles from token");
                 throw new InvalidOperationException($"Lỗi khi lấy roles từ token: {ex.Message}", ex);
+            }
+        }
+        public  string GetHomePageByRole(string token)
+        {
+            try
+            {
+                var roles = GetRoleFromToken(token);
+
+                if (roles.Contains("admin") || roles.Contains("staff"))
+                {
+                    return "/dashboard";
+                }
+                else if (roles.Contains("shipper"))
+                {
+                    return "/shipper-cargo-list";
+                }
+
+                return "/dashboard"; // default
+            }
+            catch
+            {
+                return "/login";
             }
         }
     }

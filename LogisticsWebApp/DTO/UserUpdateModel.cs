@@ -26,12 +26,6 @@ namespace LogisticsWebApp.DTO
         public List<int> OriginalRoleIds { get; set; } = new List<int>();
     }
 
-    public class RoleModel
-    {
-        public int Id { get; set; }
-        public string RoleName { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public bool IsSelected { get; set; }
-    }
+
 }
 

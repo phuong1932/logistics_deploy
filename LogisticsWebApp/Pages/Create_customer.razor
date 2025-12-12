@@ -1,6 +1,6 @@
 @page "/create-customer"
 @layout DashBoardLayout
-@attribute [Authorize(Roles = "admin")]
+@attribute [Authorize(Roles = "admin,staff")]
 @inject IHttpClientFactory HttpClientFactory
 @inject IJSRuntime JSRuntime
 @inject ILocalStorageService LocalStorage
@@ -194,35 +194,20 @@
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             }
             var response = await client.PostAsync("Customer", content);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
+            var errorresponse = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
             {
+                  // Tạo tracking mới
+                var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Tạo khách hàng thành công: " + customerModel.CustomerName});
                 successMessage = "Tạo khách hàng thành công! Đang chuyển hướng...";
                 StateHasChanged();
-                
                 await Task.Delay(1500);
                 NavigationManager.NavigateTo("/customer-list");
             }
             else
             {
-                // Parse error message
-                try
-                {
-                    var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseContent);
-                    if (errorResponse.TryGetProperty("message", out var messageProperty))
-                    {
-                        errorMessage = messageProperty.GetString();
-                    }
-                    else
-                    {
-                        errorMessage = "Tạo khách hàng thất bại. Vui lòng kiểm tra lại thông tin.";
-                    }
-                }
-                catch
-                {
-                    errorMessage = "Tạo khách hàng thất bại. Vui lòng kiểm tra lại thông tin.";
-                }
+                errorMessage =  "Không thể tạo khách hàng. Vui lòng thử lại!";
             }
         }
         catch (Exception ex)

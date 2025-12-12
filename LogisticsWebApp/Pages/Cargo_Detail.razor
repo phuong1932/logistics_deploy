@@ -100,14 +100,18 @@
                                         <p>@GetServiceTypeName(cargo.ServiceType)</p>
                                     </div>
                                     <div class="col-sm-6 mb-3">
-                                        <label class="form-label fw-bold">Số lượng shipper:</label>
-                                        <p class="text-primary fw-bold">@cargo.QuantityOfShipper</p>
+                                        <label class="form-label fw-bold">Trạng thái:</label>
+                                        <p>
+                                            <span class="badge @GetStatusBadgeClass(cargo.StatusCargo)">
+                                                @GetStatusCargoName(cargo.StatusCargo)
+                                            </span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-
+            
                     <!-- Thông tin khách hàng -->
                     <div class="col-md-6 mb-4">
                         <div class="card h-100">
@@ -163,6 +167,34 @@
                                     <div class="col-sm-6 mb-3">
                                         <label class="form-label fw-bold">Còn lại:</label>
                                         <p class="text-danger fw-bold">@FormatCurrency(GetRemainingAmount())</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thông tin shipper -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-truck me-2"></i>
+                                    Thông tin shipper
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-sm-12 mb-3">
+                                        <label class="form-label fw-bold">Tên tài xế:</label>
+                                        <p class="text-primary fw-bold">@shipperName</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Số điện thoại:</label>
+                                        <p class="text-primary fw-bold">@shipperPhone</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <label class="form-label fw-bold">Loại xe:</label>
+                                        <p class="text-primary fw-bold">@GetLoaiXeName(shipperVehicleType)</p>
                                     </div>
                                 </div>
                             </div>
@@ -247,6 +279,9 @@
     private bool isLoading = true;
     private string? errorMessage;
     private string? successMessage;
+    private string shipperName = string.Empty;
+    private string shipperPhone = string.Empty;
+    private byte? shipperVehicleType;
     HttpClient? client;
 
     protected override async Task OnInitializedAsync()
@@ -254,6 +289,7 @@
         client = HttpClientFactory.CreateClient("LogisticApi");
 
         await LoadCargoDetail();
+     
     }
 
     private async Task LoadCargoDetail()
@@ -264,20 +300,13 @@
         try
         {
             var response = await client.GetAsync($"Cargo/getcargobyid/{Id}");
-            var content = await response.Content.ReadAsStringAsync();
-            var responseData = JsonSerializer.Deserialize<CargoApiResponse>(content, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+             var res = await response.Content.ReadFromJsonAsync<HTTPResponseVM<CargoModel>>();
 
             // chỉ cần check có dữ liệu hay không
-            if (responseData?.Data != null)
+            if (res?.Success != null)
             {
-                cargo = responseData.Data;
-            }
-            else
-            {
-                errorMessage = "Không tìm thấy thông tin đơn hàng";
+                cargo = res.Data;
+                await LoadShipperDetail(res.Data.IdShipper);
             }
         }
         catch (Exception ex)
@@ -301,6 +330,60 @@
         };
     }
 
+    private async Task LoadShipperDetail(int shipperId)
+    {
+       
+            if (client == null) return;
+            var response = await client.GetAsync($"Shipper/getshipperbyid/{shipperId}");
+            if (!response.IsSuccessStatusCode) return;
+
+            var res = await response.Content.ReadFromJsonAsync<HTTPResponseVM<ShipperModel>>();
+            if (res != null && res.Success && res.Data != null)
+            {
+                shipperName = res.Data.TenTaiXe ?? string.Empty;
+                shipperPhone = res.Data.SoDienThoai ?? string.Empty;
+                shipperVehicleType = res.Data.LoaiXe;
+            }
+      
+    }
+
+    private string GetStatusCargoName(byte? statusCargo)
+    {
+        return statusCargo switch
+        {
+            1 => "Chờ duyệt",
+            2 => "Vô hiệu",
+            3 => "Chờ shipper nhận hàng",
+            4 => "Đang vận chuyển",
+            6 => "Hoàn thành đơn hàng",
+            _ => "Chưa xác định"
+        };
+    }
+
+    private string GetStatusBadgeClass(byte? status)
+    {
+        return status switch
+        {
+            1 => "bg-success",
+            2 => "bg-danger",
+            3 => "bg-warning",
+            4 => "bg-info",
+            5 => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetLoaiXeName(byte? loaiXe)
+    {
+        return loaiXe switch
+        {
+            0 => "Xe tải nhỏ",
+            1 => "Xe tải trung",
+            2 => "Xe tải lớn",
+            _ => "Chưa xác định"
+        };
+    }
+
     private string FormatCurrency(decimal? amount)
     {
         if (amount == null) return "0 VNĐ";
@@ -314,6 +397,7 @@
         return cargo.EstimatedTotalAmount.Value - cargo.AdvanceMoney.Value;
     }
 
+ 
 
 
     private void GoBack()

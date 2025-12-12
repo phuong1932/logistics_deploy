@@ -170,30 +170,7 @@ namespace logistic_web.api.Controllers
 
 
 
-        /// <summary>
-        /// Tìm kiếm cargo theo tên khách hàng
-        /// </summary>
-        /// <param name="customerName">Tên khách hàng</param>
-        /// <returns>Danh sách cargo</returns>
-        [HttpGet("searchcargobycustomer")]
-        public async Task<ActionResult<object>> SearchCargoByCustomer([FromQuery] string customerName)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(customerName))
-                {
-                    return BadRequest(new { success = false, message = "Tên khách hàng không được để trống" });
-                }
 
-                var cargos = await _cargoService.SearchCargoByCustomerAsync(customerName);
-                return Ok(new { success = true, data = cargos, message = $"Tìm thấy {cargos.Count()} cargo cho khách hàng '{customerName}'" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi tìm kiếm cargo theo tên khách hàng: {CustomerName}", customerName);
-                return StatusCode(500, new { success = false, message = "Lỗi server khi tìm kiếm cargo" });
-            }
-        }
 
         [HttpGet("exportcargodataexcel")]
         public async Task<ActionResult<object>> ExportCargoDataExcel([FromQuery] DateTime? datebegin, [FromQuery] DateTime? dateend)
@@ -261,23 +238,48 @@ namespace logistic_web.api.Controllers
         /// </summary>
         /// <param name="cargoCode">Mã cargo</param>
         /// <returns>Danh sách cargo</returns>
-        [HttpGet("searchcargobynum")]
-        public async Task<ActionResult<object>> SearchCargoByNum([FromQuery] string cargoCode)
+        [HttpGet("searchcargobynumandcus")]
+        public async Task<ActionResult<object>> searchcargobynumandcus([FromQuery] string stringsearch)
         {
             try
             {
-                if (string.IsNullOrEmpty(cargoCode))
+                if (string.IsNullOrEmpty(stringsearch))
                 {
-                    return BadRequest(new { success = false, message = "Mã cargo không được để trống" });
+                    return BadRequest(new { success = false, message = "Từ khóa tìm kiếm không được để trống" });
                 }
 
-                var cargos = await _cargoService.SearchCargoByNumAsync(cargoCode);
-                return Ok(new { success = true, data = cargos, message = $"Tìm thấy {cargos.Count()} cargo với mã '{cargoCode}'" });
+                var cargos = await _cargoService.SearchCargoByNumAsync(stringsearch);
+                return Ok(new { success = true, data = cargos, message = $"Tìm thấy {cargos.Count()} cargo với mã '{stringsearch}'" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi tìm kiếm cargo theo mã: {CargoCode}", cargoCode);
+                _logger.LogError(ex, "Lỗi khi tìm kiếm cargo theo mã: {CargoCode}", stringsearch);
                 return StatusCode(500, new { success = false, message = "Lỗi server khi tìm kiếm cargo" });
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách cargo theo shipper ID
+        /// </summary>
+        /// <param name="shipperId">ID của shipper</param>
+        /// <returns>Danh sách cargo của shipper</returns>
+        [HttpGet("getcargobyshipperid/{shipperId}")]
+        public async Task<ActionResult<object>> GetCargoByShipperId(int shipperId)
+        {
+            try
+            {
+                if (shipperId <= 0)
+                {
+                    return BadRequest(new { success = false, message = "Shipper ID không hợp lệ" });
+                }
+
+                var cargos = await _cargoService.GetCargoByShipperIdAsync(shipperId);
+                return Ok(new { success = true, data = cargos, message = $"Lấy danh sách cargo của shipper #{shipperId} thành công" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách cargo của shipper ID: {ShipperId}", shipperId);
+                return StatusCode(500, new { success = false, message = "Lỗi server khi lấy danh sách cargo" });
             }
         }
 
@@ -298,7 +300,8 @@ namespace logistic_web.api.Controllers
                 EstimatedTotalAmount = request.EstimatedTotalAmount,
                 AdvanceMoney = request.AdvanceMoney,
                 ShippingFee = request.ShippingFee,
-                QuantityOfShipper = request.QuantityOfShipper
+                IdShipper = request.IdShipper,
+                StatusCargo = request.StatusCargo ?? 1
             };
         }
 
@@ -319,7 +322,8 @@ namespace logistic_web.api.Controllers
                 EstimatedTotalAmount = request.EstimatedTotalAmount,
                 AdvanceMoney = request.AdvanceMoney,
                 ShippingFee = request.ShippingFee,
-                QuantityOfShipper = request.QuantityOfShipper
+                IdShipper = request.IdShipper,
+                StatusCargo = request.StatusCargo ?? 1
             };
         }
 
@@ -342,7 +346,8 @@ namespace logistic_web.api.Controllers
                 EstimatedTotalAmount = cargo.EstimatedTotalAmount,
                 AdvanceMoney = cargo.AdvanceMoney,
                 ShippingFee = cargo.ShippingFee,
-                QuantityOfShipper = cargo.QuantityOfShipper,
+                IdShipper = cargo.IdShipper,
+                StatusCargo = cargo.StatusCargo,
                 CreatedAt = cargo.CreatedAt,
                 FilePathJson = cargo.FilePathJson
             };

@@ -1,0 +1,354 @@
+@page "/shipper-cargo-list"
+@layout DashBoardLayout
+@attribute [Authorize(Roles = "shipper")]
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using LogisticsWebApp.DTO
+@using LogisticsWebApp.Helper
+@inject NavigationManager NavigationManager
+@inject SweetAlertService Swal
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject JwtAuthService jwtService
+
+<div class="container-fluid p-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-truck"></i> DANH SÁCH ĐƠN HÀNG CỦA TÔI</h4>
+        </div>
+
+        <div class="card-body">
+            <!-- Thông báo lỗi -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle"></i> @errorMessage
+                    <button type="button" class="btn-close" @onclick="ClearError"></button>
+                </div>
+            }
+
+            <!-- Thông báo thành công -->
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle"></i> @successMessage
+                    <button type="button" class="btn-close" @onclick="ClearSuccess"></button>
+                </div>
+            }
+
+
+            <!-- Loading -->
+            @if (isLoading)
+            {
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Bảng dữ liệu -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-primary">
+                            <tr>
+                                <th class="text-center" style="width: 60px;">STT</th>
+                                <th class="text-center" style="width: 120px;">Mã Cargo</th>
+                                <th class="text-center" style="width: 200px;">Khách hàng</th>
+                                <th class="text-center" style="width: 200px;">Địa chỉ</th>
+                                <th class="text-center" style="width: 120px;">Phí ship (VNĐ)</th>
+                                <th class="text-center" style="width: 150px;">Trạng thái</th>
+                                <th class="text-center" style="width: 200px;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (cargos != null && cargos.Any())
+                            {
+                                @for (int i = 0; i < cargos?.Count; i++)
+                                {
+                                    var cargo = cargos[i];
+                                    var index = i + 1;
+
+                                    <tr>
+                                        <td class="text-center">@index</td>
+                                        <td class="text-center"><strong>@cargo.CargoCode</strong></td>
+                                        <td>@cargo.CustomerCompanyName</td>
+                                        <td>@cargo.CustomerAddress</td>
+                                        <td class="text-end">@cargo.ShippingFee?.ToString("N0")</td>
+                                        <td class="text-center">
+                                            <span class="badge @GetStatusBadgeClass(cargo.StatusCargo)">
+                                                @GetStatusCargoName(cargo.StatusCargo)
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group btn-group-sm">
+                                                <!-- Nút xem chi tiết -->
+                                                <button class="btn btn-info" @onclick="() => ViewCargoDetail(cargo.Id)"
+                                                    title="Xem chi tiết">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+
+                                                <!-- Các nút thay đổi trạng thái -->
+                                                @if (cargo.StatusCargo == 3)
+                                                {
+                                                    <!-- Chờ shipper nhận hàng -> Đang vận chuyển -->
+                                                    <button class="btn btn-success" @onclick="() => UpdateStatus(cargo.Id, 4)"
+                                                        title="Nhận hàng và bắt đầu vận chuyển">
+                                                        <i class="fas fa-box-open"></i> Nhận hàng
+                                                    </button>
+                                                }
+                                                else if (cargo.StatusCargo == 4)
+                                                {
+                                                    <!-- Đang vận chuyển -> Hoàn thành -->
+                                                    <button class="btn btn-primary" @onclick="() => UpdateStatus(cargo.Id, 5)"
+                                                        title="Hoàn thành giao hàng">
+                                                        <i class="fas fa-check-circle"></i> Hoàn thành
+                                                    </button>
+                                                }
+                                                else if (cargo.StatusCargo == 5)
+                                                {
+                                                    <!-- Đã hoàn thành -->
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check"></i> Đã hoàn thành
+                                                    </span>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                                        <p class="text-muted mt-2">Không có đơn hàng nào</p>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Thông tin tổng số -->
+                <div class="mt-3">
+                    <strong>Tổng cộng có @(cargos?.Count ?? 0) đơn hàng</strong>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-group-sm .btn {
+        margin: 0 2px;
+    }
+
+    .badge {
+        padding: 8px 12px;
+        font-size: 0.875rem;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+</style>
+
+@code {
+    private List<CargoModel> cargos = new List<CargoModel>();
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private int currentShipperId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCargos();
+    }
+
+
+
+    private async Task LoadCargos()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+        
+
+            var client = HttpClientFactory.CreateClient("LogisticApi");
+            // Gọi API endpoint mới - lấy cargo theo shipper ID
+            // Lấy userId từ token bằng JwtAuthService (không cần validate)
+            var token = await LocalStorage.GetItemAsync<string>("token");
+            int userId = jwtService.GetUserIdFromToken(token);
+            var response = await client.GetAsync($"Cargo/getcargobyshipperid/{userId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+             
+                var result = await response.Content.ReadFromJsonAsync<HTTPResponseVM<List<CargoModel>>>();
+
+                if (result?.Success == true && result.Data != null)
+                {
+                    cargos = result.Data
+                        .Where(c => c.StatusCargo != 2)
+                        .OrderByDescending(c => c.Id)
+                        .ToList();
+                }
+                else
+                {
+                    cargos = new List<CargoModel>();
+                }
+            }
+            else
+            {
+                errorMessage = "Không thể tải danh sách đơn hàng";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi tải dữ liệu: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+
+    private void ViewCargoDetail(int id)
+    {
+        NavigationManager.NavigateTo($"/shipper-cargo-detail/{id}");
+    }
+
+    private async Task UpdateStatus(int cargoId, byte newStatus)
+    {
+        var statusName = GetStatusCargoName(newStatus);
+        var result = await Swal.FireAsync(new SweetAlertOptions
+        {
+            Title = "Xác nhận",
+            Text = $"Bạn có chắc muốn chuyển trạng thái sang '{statusName}'?",
+            Icon = SweetAlertIcon.Question,
+            ShowCancelButton = true,
+            ConfirmButtonText = "Xác nhận",
+            CancelButtonText = "Hủy"
+        });
+
+        if (result.IsConfirmed)
+        {
+            try
+            {
+                var client = HttpClientFactory.CreateClient("LogisticApi");
+                
+                // Lấy thông tin cargo hiện tại
+                var getResponse = await client.GetAsync($"Cargo/getcargobyid/{cargoId}");
+                if (!getResponse.IsSuccessStatusCode)
+                {
+                    errorMessage = "Không thể lấy thông tin đơn hàng";
+                    return;
+                }
+
+                var cargoContent = await getResponse.Content.ReadAsStringAsync();
+                var cargoResult = JsonSerializer.Deserialize<HTTPResponseVM<CargoModel>>(cargoContent, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (cargoResult?.Data == null)
+                {
+                    errorMessage = "Không tìm thấy thông tin đơn hàng";
+                    return;
+                }
+
+                var cargo = cargoResult.Data;
+
+                // Tạo request update với status mới
+                var updateRequest = new
+                {
+                    cargoCode = cargo.CargoCode,
+                    customerCompanyName = cargo.CustomerCompanyName,
+                    employeeCreate = cargo.EmployeeCreate,
+                    customerPersonInCharge = cargo.CustomerPersonInCharge,
+                    customerAddress = cargo.CustomerAddress,
+                    serviceType = cargo.ServiceType,
+                    exchangeDate = cargo.ExchangeDate,
+                    estimatedTotalAmount = cargo.EstimatedTotalAmount,
+                    advanceMoney = cargo.AdvanceMoney,
+                    shippingFee = cargo.ShippingFee,
+                    idShipper = cargo.IdShipper,
+                    statusCargo = newStatus
+                };
+
+                var updateResponse = await client.PutAsJsonAsync($"Cargo/updatecargo/{cargoId}", updateRequest);
+
+                if (updateResponse.IsSuccessStatusCode)
+                {
+                    // Tạo tracking mới
+                    var username = CustomAuthStateProvider.UserNameLoginCurrent;
+                    await client.PostAsJsonAsync("tracking/create", new { Username = username, Action = "Cập nhật trạng thái đơn hàng thành công với id: " + cargoId + " sang " + statusName });
+                    await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Icon = SweetAlertIcon.Success,
+                        Title = "Thành công",
+                        Text = $"Đã cập nhật trạng thái sang '{statusName}'!",
+                        Timer = 1800,
+                        ShowConfirmButton = false
+                    });
+                    await LoadCargos();
+                }
+                else
+                {
+                    errorMessage = "Cập nhật trạng thái thất bại";
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Lỗi khi cập nhật trạng thái: {ex.Message}";
+            }
+        }
+    }
+
+    private string GetStatusCargoName(byte? statusCargo)
+    {
+        return statusCargo switch
+        {
+            1 => "Chờ duyệt",
+            2 => "Vô hiệu",
+            3 => "Chờ shipper nhận hàng",
+            4 => "Đang vận chuyển",
+            5 => "Hoàn thành đơn hàng",
+            _ => "Chưa xác định"
+        };
+    }
+
+    private string GetStatusBadgeClass(byte? status)
+    {
+        return status switch
+        {
+            1 => "bg-warning text-dark",   // Chờ duyệt
+            2 => "bg-danger",              // Vô hiệu
+            3 => "bg-primary",             // Chờ shipper nhận hàng
+            4 => "bg-info",                // Đang vận chuyển
+            5 => "bg-success",             // Hoàn thành đơn hàng
+            _ => "bg-secondary"
+        };
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
+        StateHasChanged();
+    }
+
+    private void ClearSuccess()
+    {
+        successMessage = null;
+        StateHasChanged();
+    }
+}
+

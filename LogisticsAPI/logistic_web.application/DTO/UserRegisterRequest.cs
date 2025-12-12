@@ -22,5 +22,7 @@ namespace logistic_web.application.DTO
         public string FullName { get; set; } = string.Empty;
 
         public int RoleId { get; set; } = 0; // 0 = user role mặc định
+
+        public int? ShipperId { get; set; } = null;
     }
 }

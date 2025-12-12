@@ -16,10 +16,11 @@ namespace logistic_web.application.Services
         Task<Cargolist> CreateCargoAsync(CargoDto cargoDto);
         Task<Cargolist?> UpdateCargoAsync(int id, CargoDto cargoDto);
         Task<bool> DeleteCargoAsync(int id);
-        Task<IEnumerable<Cargolist>> SearchCargoByCustomerAsync(string customerName);
         Task<IEnumerable<Cargolist>> SearchCargoByNumAsync(string numOfCargo);
         Task<byte[]> ExportCargoDataToExcelAsync(DateTime? datebegin, DateTime? dateend);
         Task UpdateCargoFileBackgroundAsync(int id);
+
+        Task<IEnumerable<Cargolist>> GetCargoByShipperIdAsync(int userId);
         
         // Lấy thống kê tổng hợp: số lượng + doanh thu
         Task<(int count, decimal totalRevenue)> GetMonthlyStatisticsAsync();
@@ -27,19 +28,38 @@ namespace logistic_web.application.Services
     public class CargoService : ICargoService
     {
         private readonly ICargolistRepository _cargolistRepository;
+
+        private readonly IUserRoleRepository _userRoleRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<CargoService> _logger;
 
         public CargoService(
             ICargolistRepository cargolistRepository,
+            IUserRoleRepository userRoleRepository,
             IUnitOfWork unitOfWork,
             ILogger<CargoService> logger)
         {
             _cargolistRepository = cargolistRepository;
+            _userRoleRepository = userRoleRepository;
             _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
+        public async Task<IEnumerable<Cargolist>> GetCargoByShipperIdAsync(int userId)
+        {
+            // Lấy shipperId từ userId thông qua repository UserRole
+            var shipperId = await _userRoleRepository.GetShipperIdByUserIdAsync(userId);
+            if (shipperId == null)
+            {
+                _logger.LogWarning("Không tìm thấy shipperId cho userId: {UserId}", userId);
+                return Enumerable.Empty<Cargolist>();
+            }
+
+            // Lấy danh sách cargo theo IdShipper
+            var cargos = await _cargolistRepository.FindAsync(c => c.IdShipper == shipperId);
+            _logger.LogInformation("Lấy {Count} cargo cho shipperId: {ShipperId}", cargos.Count(), shipperId);
+            return cargos;
+        }
         public async Task<IEnumerable<Cargolist>> GetAllCargoAsync()
         {
             try
@@ -90,7 +110,8 @@ namespace logistic_web.application.Services
                     EstimatedTotalAmount = cargoDto.EstimatedTotalAmount,
                     AdvanceMoney = cargoDto.AdvanceMoney,
                     ShippingFee = cargoDto.ShippingFee,
-                    QuantityOfShipper = cargoDto.QuantityOfShipper,
+                    IdShipper = cargoDto.IdShipper,
+                    StatusCargo = cargoDto.StatusCargo ?? 1,
                     CreatedAt = DateTime.Now
                 };
 
@@ -139,7 +160,8 @@ namespace logistic_web.application.Services
                 existingCargo.EstimatedTotalAmount = cargoDto.EstimatedTotalAmount;
                 existingCargo.AdvanceMoney = cargoDto.AdvanceMoney;
                 existingCargo.ShippingFee = cargoDto.ShippingFee;
-                existingCargo.QuantityOfShipper = cargoDto.QuantityOfShipper;
+                existingCargo.IdShipper = cargoDto.IdShipper;
+                existingCargo.StatusCargo = cargoDto.StatusCargo;
 
                 _cargolistRepository.Update(existingCargo);
                 await _unitOfWork.SaveChangesAsync();
@@ -190,34 +212,23 @@ namespace logistic_web.application.Services
             }
         }
 
-        public async Task<IEnumerable<Cargolist>> SearchCargoByCustomerAsync(string customerName)
-        {
-            try
-            {
-                var cargos = await _cargolistRepository.FindAsync(c => c.CustomerCompanyName.Contains(customerName));
-                _logger.LogInformation("Tìm kiếm cargo theo tên khách hàng: {CustomerName}, tìm thấy {Count} kết quả",
-                    customerName, cargos.Count());
-                return cargos;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi tìm kiếm cargo theo tên khách hàng: {CustomerName}", customerName);
-                throw;
-            }
-        }
 
-        public async Task<IEnumerable<Cargolist>> SearchCargoByNumAsync(string cargoCode)
+        public async Task<IEnumerable<Cargolist>> SearchCargoByNumAsync(string stringsearch)
         {
             try
             {
-                var cargos = await _cargolistRepository.FindAsync(c => c.CargoCode != null && c.CargoCode.Contains(cargoCode));
-                _logger.LogInformation("Tìm kiếm cargo theo mã cargo: {CargoCode}, tìm thấy {Count} kết quả",
-                    cargoCode, cargos.Count());
+                var cargos = await _cargolistRepository.FindAsync(
+                    c => 
+                        (c.CargoCode != null && c.CargoCode.Contains(stringsearch)) ||
+                        (c.CustomerCompanyName != null && c.CustomerCompanyName.Contains(stringsearch))
+                );
+                _logger.LogInformation("Tìm kiếm cargo theo mã cargo: {stringsearch}, tìm thấy {Count} kết quả",
+                    stringsearch, cargos.Count());
                 return cargos;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi tìm kiếm cargo theo mã cargo: {CargoCode}", cargoCode);
+                _logger.LogError(ex, "Lỗi khi tìm kiếm cargo theo mã cargo: {CargoCode}", stringsearch);
                 throw;
             }
         }
@@ -1118,6 +1129,7 @@ namespace logistic_web.application.Services
 
                 // Tạo đường dẫn thư mục tuyệt đối tới /app/wwwroot/cargo/cargo_list/ngày hiện tại
                 string basePath = Path.Combine("wwwroot", "cargo", "cargo_list", currentDate);
+                //  string basePath = Path.Combine("..", "..", "LogisticsWebApp", "wwwroot", "cargo", "cargo_list", currentDate);
             
                 // DEBUG: Log thư mục hiện tại và thư mục basePath để kiểm tra
                 string tempDebugPath = Path.GetFullPath(basePath);
@@ -1215,7 +1227,8 @@ namespace logistic_web.application.Services
                     },
                     logistics = new
                     {
-                        quantityOfShipper = cargo.QuantityOfShipper
+                        idShipper = cargo.IdShipper,
+                        statusCargo = cargo.StatusCargo
                     }
                 }
             };

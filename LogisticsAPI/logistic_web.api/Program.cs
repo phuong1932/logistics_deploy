@@ -65,13 +65,18 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<IShipperRepository, ShipperRepository>();
+builder.Services.AddScoped<ITrackingRepository, TrackingRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 //Di Application (Services)
 builder.Services.AddScoped<ICargoService, CargoService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IUserRoleService, UserRoleService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IShipperService, ShipperService>();
+builder.Services.AddScoped<ITrackingService, TrackingService>();
 builder.Services.AddScoped<JwtAuthService>();
 
 //Cài đặt Jwt Bearer Authentication

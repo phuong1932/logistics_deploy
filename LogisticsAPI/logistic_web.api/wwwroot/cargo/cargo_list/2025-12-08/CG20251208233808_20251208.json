@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "fileType": "Cargo Information",
+    "version": "1.0",
+    "createdDate": "2025-12-08 23:38:36",
+    "description": "File này được tạo tự động khi thêm cargo mới"
+  },
+  "cargoInfo": {
+    "id": 1004,
+    "cargoCode": "CG20251208233808",
+    "customerCompanyName": "Công ty TNHH ABCDE",
+    "customerPersonInCharge": "Nguyễn Văn Ann",
+    "employeeCreate": "admin1",
+    "customerAddress": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "serviceType": {
+      "code": 0,
+      "name": "HẢI QUAN"
+    },
+    "dates": {
+      "licenseDate": "2025-12-08 23:38:08",
+      "exchangeDate": "2025-12-08",
+      "createdAt": "2025-12-08 23:38:08"
+    },
+    "financial": {
+      "estimatedTotalAmount": 1000021,
+      "advanceMoney": 10000,
+      "shippingFee": 10000,
+      "estimatedTotalAmountFormatted": "1,000,021 VND",
+      "advanceMoneyFormatted": "10,000 VND",
+      "shippingFeeFormatted": "10,000 VND"
+    },
+    "logistics": {
+      "idShipper": 1,
+      "statusCargo": 4
+    }
+  }
+}
